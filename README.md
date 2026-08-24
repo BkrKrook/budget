@@ -16,6 +16,8 @@ fylls i automatiskt varje månad, samt grafer och trender.
   varje månad på rätt dag. Poster kan pausas utan att historiken påverkas.
 - **Kategorier** – redigerbara, med färger ur en tillgänglighetsvaliderad palett.
 - **Ljust/mörkt tema** – följer systemet eller väljs manuellt.
+- **Fungerar offline** – en service worker cachar appen, så att den öppnas även
+  utan nätverk (datan finns ju redan lokalt).
 - **Export/import** – hela datan som JSON-fil, för säkerhetskopiering och för att
   flytta datan mellan enheter.
 
@@ -45,8 +47,8 @@ engångsinställning krävs först:
 Appen publiceras sedan på `https://<användarnamn>.github.io/budget/`.
 
 **Tips för mobilen:** öppna adressen i mobilens webbläsare och välj
-*Lägg till på hemskärmen* – appen får egen ikon och öppnas i helskärm som en vanlig
-app.
+*Lägg till på hemskärmen* – appen får egen ikon, öppnas i helskärm som en vanlig
+app och fungerar även utan nätverk.
 
 ## Utveckla lokalt
 
@@ -67,3 +69,6 @@ Byggt med Vite, React och TypeScript. Inga övriga beroenden.
 - Diagrammen följer en färgpalett som är validerad för färgblindhet i både ljust
   och mörkt läge; varje stapel bär sin egen etikett och trenddiagrammet har en
   tabellvy.
+- Offlinestödet (`public/sw.js`) hämtar navigeringar från nätet först – nya
+  versioner når användaren direkt – med det cachade appskalet som reserv;
+  byggets hashade filer serveras från cachen.
