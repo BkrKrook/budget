@@ -94,6 +94,12 @@ export const CloseIcon = (p: IconProps = {}) => (
   </svg>
 )
 
+export const CheckIcon = (p: IconProps = {}) => (
+  <svg {...svgProps(p)}>
+    <path d="m4.5 12.5 5 5L19.5 7" />
+  </svg>
+)
+
 export const WarnIcon = (p: IconProps = {}) => (
   <svg {...svgProps(p)}>
     <path d="M12 3.5 22 20H2Z" />

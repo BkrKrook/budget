@@ -12,10 +12,15 @@ fylls i automatiskt varje månad, samt grafer och trender.
   plusknappen och filtrering på utgifter/inkomster.
 - **Budget** – sätt ett månadstak per kategori och följ hur mycket som är kvar.
   Överdrag markeras tydligt.
+- **Sparande** – registrera enstaka insättningar (eller låt en fast post spara
+  automatiskt varje månad) och sätt sparmål per sparkategori. Sparat räknas bort
+  från månadens saldo men är ingen utgift; att nå målet firas i grönt.
 - **Fasta poster** – hyra, lön, el och abonnemang läggs in automatiskt i historiken
   varje månad på rätt dag. Poster kan pausas utan att historiken påverkas.
 - **Kategorier** – redigerbara, med färger ur en tillgänglighetsvaliderad palett.
 - **Ljust/mörkt tema** – följer systemet eller väljs manuellt.
+- **Fungerar offline** – en service worker cachar appen, så att den öppnas även
+  utan nätverk (datan finns ju redan lokalt).
 - **Export/import** – hela datan som JSON-fil, för säkerhetskopiering och för att
   flytta datan mellan enheter.
 
@@ -45,8 +50,8 @@ engångsinställning krävs först:
 Appen publiceras sedan på `https://<användarnamn>.github.io/budget/`.
 
 **Tips för mobilen:** öppna adressen i mobilens webbläsare och välj
-*Lägg till på hemskärmen* – appen får egen ikon och öppnas i helskärm som en vanlig
-app.
+*Lägg till på hemskärmen* – appen får egen ikon, öppnas i helskärm som en vanlig
+app och fungerar även utan nätverk.
 
 ## Utveckla lokalt
 
@@ -67,3 +72,6 @@ Byggt med Vite, React och TypeScript. Inga övriga beroenden.
 - Diagrammen följer en färgpalett som är validerad för färgblindhet i både ljust
   och mörkt läge; varje stapel bär sin egen etikett och trenddiagrammet har en
   tabellvy.
+- Offlinestödet (`public/sw.js`) hämtar navigeringar från nätet först – nya
+  versioner når användaren direkt – med det cachade appskalet som reserv;
+  byggets hashade filer serveras från cachen.

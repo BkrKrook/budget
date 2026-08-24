@@ -41,8 +41,8 @@ export function Fixed() {
         <section className="card welcome">
           <h2>Slipp registrera samma sak varje månad</h2>
           <p>
-            Lägg in hyra, lön, el och abonnemang här, så skapas de automatiskt i historiken varje
-            månad på rätt dag.
+            Lägg in hyra, lön, abonnemang och månadssparande här, så skapas de automatiskt i
+            historiken varje månad på rätt dag.
           </p>
           <button type="button" className="btn primary" onClick={() => setSheet('new')}>
             Lägg till fast post
@@ -154,7 +154,7 @@ function FixedForm({ item, onClose }: { item: FixedItem | null; onClose: () => v
           <span>Namn</span>
           <input
             type="text"
-            placeholder="T.ex. Hyra, Lön, El"
+            placeholder="T.ex. Hyra, Lön, Månadssparande"
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoFocus={!item}

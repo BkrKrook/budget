@@ -1,4 +1,6 @@
-export type TxType = 'expense' | 'income'
+/** 'saving' är pengar som flyttas undan (sparkonto, buffert) – varken utgift
+ *  eller inkomst, men räknas bort från månadens saldo. */
+export type TxType = 'expense' | 'income' | 'saving'
 
 /** Färg anges som palettplats (slot) 0–8 så att ljust/mörkt tema kan byta nyans.
  *  Slot 0 är neutral grå (för "Övrigt" och hopvikta rester i grafer). */
@@ -40,7 +42,8 @@ export interface AppData {
   transactions: Transaction[]
   categories: Category[]
   fixed: FixedItem[]
-  /** Månadsbudget per kategori-id, i öre. */
+  /** Månadsbudget per kategori-id, i öre. För utgiftskategorier ett tak,
+   *  för sparkategorier ett mål. */
   budgets: Record<string, number>
   /** Nycklar '<fixedId>:<YYYY-MM>' för månader där en fast post raderats
    *  manuellt och inte ska återskapas. */

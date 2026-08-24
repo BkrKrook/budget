@@ -333,6 +333,11 @@ p {
   gap: 8px;
 }
 
+/* Med Sparat-brickan blir det fyra – 2×2 i stället för fyra trånga kolumner. */
+.stat-row.four {
+  grid-template-columns: repeat(2, 1fr);
+}
+
 .stat-tile {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -447,6 +452,11 @@ p {
   font-size: 13px;
   font-weight: 600;
   color: var(--critical);
+}
+
+/* Samma notisrad men positiv – för uppnådda sparmål. */
+.over-note.good {
+  color: var(--success);
 }
 
 /* ---------- Trenddiagram ---------- */

@@ -21,24 +21,30 @@ export function txForMonth(data: AppData, monthKey: string): Transaction[] {
 export interface MonthTotals {
   incomeOre: number
   expenseOre: number
+  savingOre: number
+  /** Saldo = inkomster − utgifter − sparande: undansparade pengar är inte
+   *  förbrukade, men inte heller kvar att spendera. */
   netOre: number
 }
 
 export function monthTotals(data: AppData, monthKey: string): MonthTotals {
   let incomeOre = 0
   let expenseOre = 0
+  let savingOre = 0
   for (const t of txForMonth(data, monthKey)) {
     if (t.type === 'income') incomeOre += t.amountOre
+    else if (t.type === 'saving') savingOre += t.amountOre
     else expenseOre += t.amountOre
   }
-  return { incomeOre, expenseOre, netOre: incomeOre - expenseOre }
+  return { incomeOre, expenseOre, savingOre, netOre: incomeOre - expenseOre - savingOre }
 }
 
-/** Månadens utgiftssumma per kategori-id – delas av expenseByCategory och budgetRows. */
-function expenseSumsByCategory(data: AppData, monthKey: string): Map<string, number> {
+/** Månadens summa per kategori-id för en transaktionstyp –
+ *  delas av expenseByCategory, budgetRows och savingRows. */
+function sumsByCategory(data: AppData, monthKey: string, type: Transaction['type']): Map<string, number> {
   const sums = new Map<string, number>()
   for (const t of txForMonth(data, monthKey)) {
-    if (t.type !== 'expense') continue
+    if (t.type !== type) continue
     sums.set(t.categoryId, (sums.get(t.categoryId) ?? 0) + t.amountOre)
   }
   return sums
@@ -52,7 +58,7 @@ export interface CategorySum {
 /** Månadens utgifter per kategori, störst först. */
 export function expenseByCategory(data: AppData, monthKey: string): CategorySum[] {
   const rows: CategorySum[] = []
-  for (const [categoryId, amountOre] of expenseSumsByCategory(data, monthKey)) {
+  for (const [categoryId, amountOre] of sumsByCategory(data, monthKey, 'expense')) {
     const category = categoryById(data, categoryId)
     if (category && amountOre > 0) rows.push({ category, amountOre })
   }
@@ -68,15 +74,16 @@ export function trend(data: AppData, endMonth: string, n = 6): TrendPoint[] {
   const byMonth = new Map<string, TrendPoint>()
   for (let i = n - 1; i >= 0; i--) {
     const mk = addMonths(endMonth, -i)
-    byMonth.set(mk, { monthKey: mk, incomeOre: 0, expenseOre: 0, netOre: 0 })
+    byMonth.set(mk, { monthKey: mk, incomeOre: 0, expenseOre: 0, savingOre: 0, netOre: 0 })
   }
   for (const t of data.transactions) {
     const p = byMonth.get(monthKeyOf(t.date))
     if (!p) continue
     if (t.type === 'income') p.incomeOre += t.amountOre
+    else if (t.type === 'saving') p.savingOre += t.amountOre
     else p.expenseOre += t.amountOre
   }
-  for (const p of byMonth.values()) p.netOre = p.incomeOre - p.expenseOre
+  for (const p of byMonth.values()) p.netOre = p.incomeOre - p.expenseOre - p.savingOre
   return [...byMonth.values()]
 }
 
@@ -88,13 +95,33 @@ export interface BudgetRow {
 
 /** Budgeterade utgiftskategorier med månadens utfall, i kategorilistans ordning. */
 export function budgetRows(data: AppData, monthKey: string): BudgetRow[] {
-  const spent = expenseSumsByCategory(data, monthKey)
+  const spent = sumsByCategory(data, monthKey, 'expense')
   return data.categories
     .filter((c) => c.type === 'expense' && data.budgets[c.id] !== undefined)
     .map((category) => ({
       category,
       capOre: data.budgets[category.id],
       spentOre: spent.get(category.id) ?? 0,
+    }))
+}
+
+export interface SavingRow {
+  category: Category
+  /** Månadens sparmål, eller null när inget mål är satt. */
+  goalOre: number | null
+  savedOre: number
+}
+
+/** Alla sparkategorier med månadens sparade belopp, i kategorilistans ordning.
+ *  Målet lagras i samma budgets-post som utgiftstaken, per kategori-id. */
+export function savingRows(data: AppData, monthKey: string): SavingRow[] {
+  const saved = sumsByCategory(data, monthKey, 'saving')
+  return data.categories
+    .filter((c) => c.type === 'saving')
+    .map((category) => ({
+      category,
+      goalOre: data.budgets[category.id] ?? null,
+      savedOre: saved.get(category.id) ?? 0,
     }))
 }
 

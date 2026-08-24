@@ -8,6 +8,7 @@ import { Dot } from '../Icons'
 /** Seriernas fasta palettplatser i diagrammet. */
 const INCOME_SLOT = 1
 const EXPENSE_SLOT = 2
+const SAVING_SLOT = 6
 
 /** Avrundar uppåt till ett "snyggt" axelvärde, med halverbara steg så att
  *  även mittengridlinjen blir ett rent tal. */
@@ -29,7 +30,13 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
   const [selected, setSelected] = useState<string | null>(null)
   const [showTable, setShowTable] = useState(false)
 
-  const maxOre = Math.max(...points.map((p) => Math.max(p.incomeOre, p.expenseOre)), 1)
+  // Sparserien visas bara när något sparats i fönstret – annars skräpar en
+  // evigt tom tredje stapel ner diagrammet för den som inte sparar.
+  const hasSaving = points.some((p) => p.savingOre > 0)
+  const maxOre = Math.max(
+    ...points.map((p) => Math.max(p.incomeOre, p.expenseOre, p.savingOre)),
+    1,
+  )
   // Golva axeln på 100 kr så att månader helt utan data inte ger en 0/0/0-axel.
   const topKr = niceCeil(Math.max(maxOre / 100, 100))
   const sel = points.find((p) => p.monthKey === selected) ?? null
@@ -44,6 +51,11 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
           <span className="legend-item">
             <Dot slot={EXPENSE_SLOT} /> Utgifter
           </span>
+          {hasSaving && (
+            <span className="legend-item">
+              <Dot slot={SAVING_SLOT} /> Sparat
+            </span>
+          )}
         </div>
         <button type="button" className="text-btn" onClick={() => setShowTable(!showTable)}>
           {showTable ? 'Diagram' : 'Tabell'}
@@ -57,6 +69,7 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
               <th scope="col">Månad</th>
               <th scope="col">Inkomster</th>
               <th scope="col">Utgifter</th>
+              {hasSaving && <th scope="col">Sparat</th>}
               <th scope="col">Netto</th>
             </tr>
           </thead>
@@ -66,6 +79,7 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
                 <th scope="row">{shortMonthLabel(p.monthKey)}</th>
                 <td>{formatKr(p.incomeOre)}</td>
                 <td>{formatKr(p.expenseOre)}</td>
+                {hasSaving && <td>{formatKr(p.savingOre)}</td>}
                 <td className={p.netOre >= 0 ? 'pos' : 'neg'}>{formatNetKr(p.netOre)}</td>
               </tr>
             ))}
@@ -75,7 +89,9 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
         <>
           <p className="trend-readout" aria-live="polite">
             {sel
-              ? `${monthLabel(sel.monthKey)}: +${formatKr(sel.incomeOre)} · −${formatKr(sel.expenseOre)}`
+              ? `${monthLabel(sel.monthKey)}: +${formatKr(sel.incomeOre)} · −${formatKr(sel.expenseOre)}${
+                  hasSaving ? ` · ${formatKr(sel.savingOre)} sparat` : ''
+                }`
               : 'Tryck på en månad för exakta värden'}
           </p>
           <div className="trend-plot">
@@ -98,7 +114,9 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
                     type="button"
                     className={`trend-col${selected === p.monthKey ? ' sel' : ''}`}
                     onClick={() => setSelected(selected === p.monthKey ? null : p.monthKey)}
-                    aria-label={`${monthLabel(p.monthKey)}: inkomster ${formatKr(p.incomeOre)}, utgifter ${formatKr(p.expenseOre)}`}
+                    aria-label={`${monthLabel(p.monthKey)}: inkomster ${formatKr(p.incomeOre)}, utgifter ${formatKr(p.expenseOre)}${
+                      hasSaving ? `, sparat ${formatKr(p.savingOre)}` : ''
+                    }`}
                     aria-pressed={selected === p.monthKey}
                   >
                     <span className="trend-bars">
@@ -110,6 +128,12 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
                         className="trend-bar"
                         style={{ height: h(p.expenseOre), background: slotColor(EXPENSE_SLOT) }}
                       />
+                      {hasSaving && (
+                        <span
+                          className="trend-bar"
+                          style={{ height: h(p.savingOre), background: slotColor(SAVING_SLOT) }}
+                        />
+                      )}
                     </span>
                     <span className="trend-x">{shortMonthLabel(p.monthKey)}</span>
                   </button>
