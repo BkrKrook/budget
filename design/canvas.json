@@ -1,0 +1,14 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "title": "Översikt", "x": 0, "y": 0, "w": 390, "h": 1136 },
+    { "file": "Historik.dc.html", "title": "Historik", "x": 480, "y": 0, "w": 390, "h": 936 },
+    { "file": "Budget.dc.html", "title": "Budget", "x": 960, "y": 0, "w": 390, "h": 972 },
+    { "file": "FastaPoster.dc.html", "title": "Fasta poster", "x": 1440, "y": 0, "w": 390, "h": 844 },
+    { "file": "Mer.dc.html", "title": "Mer", "x": 1920, "y": 0, "w": 390, "h": 984 },
+    { "file": "NyTransaktion.dc.html", "title": "Ny transaktion", "x": 480, "y": 1280, "w": 390, "h": 844 }
+  ],
+  "annotations": [
+    { "id": "om-canvasen", "x": 0, "y": -220, "w": 460, "text": "Min budget – appens nuvarande skärmar i ljust tema (390 px bredd), återskapade från koden med exakta färger, typografi och mått. Skärmarna visas i full scrollhöjd; Ny transaktion är bottensheeten som öppnas från plusknappen." }
+  ],
+  "launch": { "view": "canvas" }
+}
