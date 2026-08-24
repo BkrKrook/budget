@@ -12,6 +12,9 @@ fylls i automatiskt varje månad, samt grafer och trender.
   plusknappen och filtrering på utgifter/inkomster.
 - **Budget** – sätt ett månadstak per kategori och följ hur mycket som är kvar.
   Överdrag markeras tydligt.
+- **Sparande** – registrera enstaka insättningar (eller låt en fast post spara
+  automatiskt varje månad) och sätt sparmål per sparkategori. Sparat räknas bort
+  från månadens saldo men är ingen utgift; att nå målet firas i grönt.
 - **Fasta poster** – hyra, lön, el och abonnemang läggs in automatiskt i historiken
   varje månad på rätt dag. Poster kan pausas utan att historiken påverkas.
 - **Kategorier** – redigerbara, med färger ur en tillgänglighetsvaliderad palett.

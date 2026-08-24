@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { useApp } from '../data/AppState'
 import { formatKr, oreToInput, parseKr } from '../lib/money'
-import { budgetRows, totalBudget } from '../lib/selectors'
+import { budgetRows, savingRows, totalBudget } from '../lib/selectors'
+import type { SavingRow } from '../lib/selectors'
 import type { Category } from '../types'
 import { AmountField } from '../components/AmountField'
 import { BudgetSummary } from '../components/BudgetSummary'
 import { MonthSwitcher } from '../components/MonthSwitcher'
 import { Sheet } from '../components/Sheet'
 import { Meter } from '../components/charts/Meter'
-import { Dot, WarnIcon } from '../components/Icons'
+import { CheckIcon, Dot, WarnIcon } from '../components/Icons'
 
 interface Props {
   month: string
@@ -22,6 +23,9 @@ export function Budget({ month, onMonth }: Props) {
 
   const rows = budgetRows(data, month)
   const total = totalBudget(rows)
+  const savings = savingRows(data, month)
+  const goals = savings.filter((s): s is SavingRow & { goalOre: number } => s.goalOre !== null)
+  const noGoal = savings.filter((s) => s.goalOre === null)
   const unbudgeted = data.categories.filter(
     (c) => c.type === 'expense' && data.budgets[c.id] === undefined,
   )
@@ -53,15 +57,16 @@ export function Budget({ month, onMonth }: Props) {
       </header>
       <MonthSwitcher month={month} onChange={onMonth} />
 
-      {rows.length === 0 ? (
+      {rows.length === 0 && goals.length === 0 && (
         <section className="card welcome">
           <h2>Sätt din första budget</h2>
           <p>
-            Välj ett månadstak per kategori så ser du hela tiden hur mycket som är kvar att
-            spendera.
+            Välj ett månadstak per utgiftskategori så ser du hela tiden hur mycket som är kvar
+            att spendera – och sätt ett sparmål för att följa månadens sparande.
           </p>
         </section>
-      ) : (
+      )}
+      {rows.length > 0 && (
         <section className="card budget-card">
           <BudgetSummary capOre={total.capOre} spentOre={total.spentOre} />
         </section>
@@ -99,6 +104,62 @@ export function Budget({ month, onMonth }: Props) {
         </div>
       )}
 
+      {savings.length > 0 && (
+        <>
+          <h2 className="section-head">Sparmål</h2>
+          <div className="card list">
+            {goals.map(({ category, goalOre, savedOre }) => {
+              const reached = savedOre >= goalOre
+              return (
+                <button
+                  key={category.id}
+                  type="button"
+                  className="row budget-row"
+                  onClick={() => openEditor(category)}
+                >
+                  <span className="row-main">
+                    <span className="budget-row-top">
+                      <Dot slot={category.slot} />
+                      <span className="row-title">{category.name}</span>
+                      <span className="budget-nums">
+                        {formatKr(savedOre)} / {formatKr(goalOre)}
+                      </span>
+                    </span>
+                    {/* Överskjutet sparande är bra – mätaren klampas i stället
+                        för att slå om till kritisk färg som för utgiftstak. */}
+                    <Meter ratio={Math.min(1, savedOre / goalOre)} slot={category.slot} />
+                    {reached ? (
+                      <span className="over-note good">
+                        <CheckIcon size={14} />{' '}
+                        {savedOre > goalOre
+                          ? `Mål nått – ${formatKr(savedOre - goalOre)} över`
+                          : 'Mål nått!'}
+                      </span>
+                    ) : (
+                      <span className="hint">{formatKr(goalOre - savedOre)} kvar till målet</span>
+                    )}
+                  </span>
+                </button>
+              )
+            })}
+            {noGoal.map(({ category }) => (
+              <button
+                key={category.id}
+                type="button"
+                className="row"
+                onClick={() => openEditor(category)}
+              >
+                <Dot slot={category.slot} big />
+                <span className="row-main">
+                  <span className="row-title">{category.name}</span>
+                </span>
+                <span className="row-action">Sätt mål</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
       {unbudgeted.length > 0 && (
         <>
           <h2 className="section-head">Utan budget</h2>
@@ -117,7 +178,12 @@ export function Budget({ month, onMonth }: Props) {
       )}
 
       {editing && (
-        <Sheet title={`Budget för ${editing.name}`} onClose={() => setEditing(null)}>
+        <Sheet
+          title={
+            editing.type === 'saving' ? `Sparmål för ${editing.name}` : `Budget för ${editing.name}`
+          }
+          onClose={() => setEditing(null)}
+        >
           <form
             className="form"
             onSubmit={(e) => {
@@ -125,13 +191,18 @@ export function Budget({ month, onMonth }: Props) {
               saveBudget()
             }}
           >
-            <AmountField label="Månadstak" value={amount} onChange={setAmount} autoFocus />
+            <AmountField
+              label={editing.type === 'saving' ? 'Månadsmål' : 'Månadstak'}
+              value={amount}
+              onChange={setAmount}
+              autoFocus
+            />
             <button type="submit" className="btn primary">
               Spara
             </button>
             {data.budgets[editing.id] !== undefined && (
               <button type="button" className="btn danger-ghost" onClick={removeBudget}>
-                Ta bort budget
+                {editing.type === 'saving' ? 'Ta bort mål' : 'Ta bort budget'}
               </button>
             )}
           </form>

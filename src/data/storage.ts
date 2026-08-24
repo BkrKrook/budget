@@ -41,7 +41,8 @@ export const storage: StorageAdapter = {
 
 const isStr = (v: unknown): v is string => typeof v === 'string'
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
-const isTxType = (v: unknown): v is 'expense' | 'income' => v === 'expense' || v === 'income'
+const isTxType = (v: unknown): v is 'expense' | 'income' | 'saving' =>
+  v === 'expense' || v === 'income' || v === 'saving'
 const isMonth = (v: unknown): v is string => isStr(v) && isMonthKey(v)
 const isDate = (v: unknown): v is string => isStr(v) && isISODate(v)
 
@@ -63,6 +64,11 @@ export function sanitize(raw: unknown): AppData | null {
       })
     : base.categories
   if (categories.length === 0) categories.push(...base.categories)
+  // Migrering: data sparad innan spartypen fanns saknar sparkategorier –
+  // lägg till standardkategorin så att Sparande-fliken fungerar direkt.
+  if (!categories.some((c) => c.type === 'saving')) {
+    categories.push(...base.categories.filter((c) => c.type === 'saving'))
+  }
   const catIds = new Set(categories.map((c) => c.id))
 
   const transactions: Transaction[] = Array.isArray(r.transactions)

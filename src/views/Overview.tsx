@@ -52,7 +52,8 @@ export function Overview({ month, onMonth, onAddTx, goTo }: Props) {
               Registrera övriga köp med <strong>+</strong>-knappen.
             </li>
             <li>
-              Sätt en <strong>budget</strong> per kategori och följ hur mycket som är kvar.
+              Sätt en <strong>budget</strong> per kategori – och ett <strong>sparmål</strong> om
+              du vill följa månadens sparande.
             </li>
           </ol>
           <div className="btn-row">

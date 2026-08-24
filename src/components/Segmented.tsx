@@ -31,4 +31,5 @@ export function Segmented<T extends string>({ value, onChange, options, label, s
 export const TX_TYPE_OPTIONS: readonly (readonly [TxType, string])[] = [
   ['expense', 'Utgift'],
   ['income', 'Inkomst'],
+  ['saving', 'Sparande'],
 ]

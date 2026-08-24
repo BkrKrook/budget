@@ -16,6 +16,18 @@ const THEME_OPTIONS: readonly (readonly [Theme, string])[] = [
   ['dark', 'Mörkt'],
 ]
 
+const TYPE_HEADS: Record<TxType, string> = {
+  expense: 'Utgifter',
+  income: 'Inkomster',
+  saving: 'Sparande',
+}
+
+const TYPE_HINTS: Record<TxType, string> = {
+  expense: 'utgiftskategori',
+  income: 'inkomstkategori',
+  saving: 'sparkategori',
+}
+
 export function More() {
   const { data, dispatch } = useApp()
   // Category = redigera befintlig, TxType = ny kategori av den typen.
@@ -78,9 +90,9 @@ export function More() {
       </div>
 
       <h2 className="section-head">Kategorier</h2>
-      {(['expense', 'income'] as TxType[]).map((type) => (
+      {(['expense', 'income', 'saving'] as TxType[]).map((type) => (
         <div key={type}>
-          <h3 className="sub-head">{type === 'expense' ? 'Utgifter' : 'Inkomster'}</h3>
+          <h3 className="sub-head">{TYPE_HEADS[type]}</h3>
           <div className="card list">
             {data.categories
               .filter((c) => c.type === type)
@@ -212,7 +224,7 @@ function CategoryForm({ init, onClose }: { init: Category | TxType; onClose: () 
           </div>
         </div>
 
-        <p className="hint">Typ: {type === 'expense' ? 'utgiftskategori' : 'inkomstkategori'}</p>
+        <p className="hint">Typ: {TYPE_HINTS[type]}</p>
 
         {error && (
           <p className="error" role="alert">

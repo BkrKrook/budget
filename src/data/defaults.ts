@@ -30,6 +30,7 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat-lon', name: 'Lön', type: 'income', slot: 1 },
   { id: 'cat-bidrag', name: 'Bidrag & ersättningar', type: 'income', slot: 3 },
   { id: 'cat-ovrig-inkomst', name: 'Övrig inkomst', type: 'income', slot: 0 },
+  { id: 'cat-sparande', name: 'Sparande', type: 'saving', slot: 6 },
 ]
 
 export function defaultData(): AppData {

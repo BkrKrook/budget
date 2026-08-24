@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useApp } from '../data/AppState'
 import { dayLabel } from '../lib/dates'
-import { formatSignedKr } from '../lib/money'
+import { formatKr, formatSignedKr } from '../lib/money'
 import { categoryById, monthTotals, txForMonth } from '../lib/selectors'
 import type { Transaction, TxType } from '../types'
 import { Dot, RepeatIcon } from '../components/Icons'
@@ -21,6 +21,7 @@ const FILTER_OPTIONS: readonly (readonly [Filter, string])[] = [
   ['all', 'Alla'],
   ['expense', 'Utgifter'],
   ['income', 'Inkomster'],
+  ['saving', 'Sparande'],
 ]
 
 export function Transactions({ month, onMonth, onEditTx, onAddTx }: Props) {
@@ -52,6 +53,7 @@ export function Transactions({ month, onMonth, onEditTx, onAddTx }: Props) {
         <span className="neg">{formatSignedKr(totals.expenseOre, 'expense')}</span>
         {' · '}
         <span className="pos">{formatSignedKr(totals.incomeOre, 'income')}</span>
+        {totals.savingOre > 0 && <> · {formatKr(totals.savingOre)} sparat</>}
       </p>
 
       <Segmented value={filter} onChange={setFilter} options={FILTER_OPTIONS} label="Filtrera" small />
