@@ -3,7 +3,7 @@ import type { Tab } from './components/BottomNav'
 import { BottomNav } from './components/BottomNav'
 import { PlusIcon } from './components/Icons'
 import { TxForm } from './components/TxForm'
-import { currentMonthKey, todayISO } from './lib/dates'
+import { currentMonthKey, dateInMonth, todayISO } from './lib/dates'
 import type { Transaction } from './types'
 import { useApp } from './data/AppState'
 import { Budget } from './views/Budget'
@@ -12,23 +12,18 @@ import { More } from './views/More'
 import { Overview } from './views/Overview'
 import { Transactions } from './views/Transactions'
 
-type TxSheet = { mode: 'new' } | { mode: 'edit'; tx: Transaction } | null
-
 export default function App() {
   const { persistError } = useApp()
   const [tab, setTab] = useState<Tab>('overview')
   const [month, setMonth] = useState(currentMonthKey())
-  const [txSheet, setTxSheet] = useState<TxSheet>(null)
-
-  const openNew = () => setTxSheet({ mode: 'new' })
-  const openEdit = (tx: Transaction) => setTxSheet({ mode: 'edit', tx })
+  const [txSheet, setTxSheet] = useState<Transaction | 'new' | null>(null)
 
   // Ny transaktion i en annan månad än den pågående får månadens första dag som förslag.
-  const defaultDate = month === currentMonthKey() ? todayISO() : `${month}-01`
+  const defaultDate = month === currentMonthKey() ? todayISO() : dateInMonth(month, 1)
   const showFab = tab === 'overview' || tab === 'history' || tab === 'budget'
 
   return (
-    <div className="app">
+    <>
       {persistError && (
         <div className="warn-banner" role="alert">
           Datan kan inte sparas i den här webbläsaren – ändringar går förlorade när sidan stängs.
@@ -37,10 +32,20 @@ export default function App() {
       )}
       <main className="content">
         {tab === 'overview' && (
-          <Overview month={month} onMonth={setMonth} onAddTx={openNew} goTo={setTab} />
+          <Overview
+            month={month}
+            onMonth={setMonth}
+            onAddTx={() => setTxSheet('new')}
+            goTo={setTab}
+          />
         )}
         {tab === 'history' && (
-          <Transactions month={month} onMonth={setMonth} onEditTx={openEdit} onAddTx={openNew} />
+          <Transactions
+            month={month}
+            onMonth={setMonth}
+            onEditTx={setTxSheet}
+            onAddTx={() => setTxSheet('new')}
+          />
         )}
         {tab === 'budget' && <Budget month={month} onMonth={setMonth} />}
         {tab === 'fixed' && <Fixed />}
@@ -48,7 +53,12 @@ export default function App() {
       </main>
 
       {showFab && (
-        <button type="button" className="fab" onClick={openNew} aria-label="Ny transaktion">
+        <button
+          type="button"
+          className="fab"
+          onClick={() => setTxSheet('new')}
+          aria-label="Ny transaktion"
+        >
           <PlusIcon size={26} />
         </button>
       )}
@@ -57,11 +67,11 @@ export default function App() {
 
       {txSheet && (
         <TxForm
-          initial={txSheet.mode === 'edit' ? txSheet.tx : undefined}
+          initial={txSheet === 'new' ? undefined : txSheet}
           defaultDate={defaultDate}
           onClose={() => setTxSheet(null)}
         />
       )}
-    </div>
+    </>
   )
 }

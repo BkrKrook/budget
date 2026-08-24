@@ -12,9 +12,9 @@
     <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
     <script>
       // Sätt temat innan appen laddas så att sidan inte blinkar i fel färg.
+      // Nyckeln speglas av appen (THEME_KEY i src/data/storage.ts).
       try {
-        var d = JSON.parse(localStorage.getItem('minbudget:data:v1'))
-        var t = d && d.settings && d.settings.theme
+        var t = localStorage.getItem('minbudget:theme')
         if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t
       } catch (e) {}
     </script>

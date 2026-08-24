@@ -1,9 +1,12 @@
 const pad = (n: number) => String(n).padStart(2, '0')
 
 /** Lokal tid – aldrig toISOString(), som ger UTC och fel datum kvällstid. */
-export function toISO(d: Date): string {
+function toISO(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
+
+export const isISODate = (s: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(s)
+export const isMonthKey = (s: string): boolean => /^\d{4}-\d{2}$/.test(s)
 
 export const todayISO = () => toISO(new Date())
 export const currentMonthKey = () => todayISO().slice(0, 7)

@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useApp } from '../data/AppState'
-import { formatKr, parseKr } from '../lib/money'
+import { formatKr, oreToInput, parseKr } from '../lib/money'
 import { budgetRows, totalBudget } from '../lib/selectors'
 import type { Category } from '../types'
+import { AmountField } from '../components/AmountField'
+import { BudgetSummary } from '../components/BudgetSummary'
 import { MonthSwitcher } from '../components/MonthSwitcher'
 import { Sheet } from '../components/Sheet'
 import { Meter } from '../components/charts/Meter'
-import { WarnIcon } from '../components/Icons'
+import { Dot, WarnIcon } from '../components/Icons'
 
 interface Props {
   month: string
@@ -19,15 +21,14 @@ export function Budget({ month, onMonth }: Props) {
   const [amount, setAmount] = useState('')
 
   const rows = budgetRows(data, month)
-  const total = totalBudget(data, month)
-  const leftOre = total.capOre - total.spentOre
+  const total = totalBudget(rows)
   const unbudgeted = data.categories.filter(
     (c) => c.type === 'expense' && data.budgets[c.id] === undefined,
   )
 
   const openEditor = (cat: Category) => {
     const cap = data.budgets[cat.id]
-    setAmount(cap ? String(cap / 100).replace('.', ',') : '')
+    setAmount(cap ? oreToInput(cap) : '')
     setEditing(cat)
   }
 
@@ -61,16 +62,8 @@ export function Budget({ month, onMonth }: Props) {
           </p>
         </section>
       ) : (
-        <section className="card budget-total">
-          <span className="card-title">Kvar att spendera</span>
-          <span className={`hero ${leftOre >= 0 ? 'pos' : 'neg'}`}>
-            {leftOre < 0 ? '−' : ''}
-            {formatKr(Math.abs(leftOre))}
-          </span>
-          <Meter ratio={total.capOre > 0 ? total.spentOre / total.capOre : 0} slot={1} />
-          <span className="sub">
-            {formatKr(total.spentOre)} använt av {formatKr(total.capOre)} budgeterat
-          </span>
+        <section className="card budget-card">
+          <BudgetSummary capOre={total.capOre} spentOre={total.spentOre} />
         </section>
       )}
 
@@ -87,17 +80,13 @@ export function Budget({ month, onMonth }: Props) {
               >
                 <span className="row-main">
                   <span className="budget-row-top">
-                    <span
-                      className="dot"
-                      style={{ background: `var(--slot-${category.slot})` }}
-                      aria-hidden
-                    />
+                    <Dot slot={category.slot} />
                     <span className="row-title">{category.name}</span>
                     <span className="budget-nums">
                       {formatKr(spentOre)} / {formatKr(capOre)}
                     </span>
                   </span>
-                  <Meter ratio={capOre > 0 ? spentOre / capOre : 0} slot={category.slot} />
+                  <Meter ratio={spentOre / capOre} slot={category.slot} />
                   {over && (
                     <span className="over-note">
                       <WarnIcon size={14} /> {formatKr(spentOre - capOre)} över budgeten
@@ -116,7 +105,7 @@ export function Budget({ month, onMonth }: Props) {
           <div className="card list">
             {unbudgeted.map((c) => (
               <button key={c.id} type="button" className="row" onClick={() => openEditor(c)}>
-                <span className="dot big" style={{ background: `var(--slot-${c.slot})` }} aria-hidden />
+                <Dot slot={c.slot} big />
                 <span className="row-main">
                   <span className="row-title">{c.name}</span>
                 </span>
@@ -136,21 +125,7 @@ export function Budget({ month, onMonth }: Props) {
               saveBudget()
             }}
           >
-            <label className="field">
-              <span>Månadstak</span>
-              <div className="amount-wrap">
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="0"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  autoFocus
-                  aria-label="Månadstak i kronor"
-                />
-                <span className="amount-unit">kr</span>
-              </div>
-            </label>
+            <AmountField label="Månadstak" value={amount} onChange={setAmount} autoFocus />
             <button type="submit" className="btn primary">
               Spara
             </button>

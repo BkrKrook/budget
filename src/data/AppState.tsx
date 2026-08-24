@@ -3,10 +3,11 @@ import type { ReactNode } from 'react'
 import type { AppData, Category, FixedItem, Theme, Transaction } from '../types'
 import { currentMonthKey, dateInMonth, monthKeyOf, monthsBetween } from '../lib/dates'
 import { uid } from '../lib/id'
+import { isCategoryUsed } from '../lib/selectors'
 import { defaultData } from './defaults'
-import { storage } from './storage'
+import { storage, THEME_KEY } from './storage'
 
-export type Action =
+type Action =
   | { type: 'tx/add'; tx: Transaction }
   | { type: 'tx/update'; tx: Transaction }
   | { type: 'tx/delete'; id: string }
@@ -22,6 +23,10 @@ export type Action =
   | { type: 'data/reset' }
   | { type: 'materialize' }
 
+/** Enda byggaren av nycklarna i skippedFixed – formatet är persisterat
+ *  (localStorage/export) och delas av materialize och tombstone-hanteringen. */
+const fixedKey = (fixedId: string, monthKey: string) => `${fixedId}:${monthKey}`
+
 /** Skapar månadens transaktioner från aktiva fasta poster – från postens
  *  startmånad till och med innevarande månad, utom där en transaktion redan
  *  finns eller användaren raderat den (tombstone i skippedFixed). */
@@ -29,13 +34,15 @@ function materialize(data: AppData): AppData {
   const nowMonth = currentMonthKey()
   const skipped = new Set(data.skippedFixed)
   const existing = new Set(
-    data.transactions.filter((t) => t.fixedId).map((t) => `${t.fixedId}:${monthKeyOf(t.date)}`),
+    data.transactions
+      .filter((t) => t.fixedId)
+      .map((t) => fixedKey(t.fixedId as string, monthKeyOf(t.date))),
   )
   const created: Transaction[] = []
   for (const f of data.fixed) {
     if (!f.active) continue
     for (const m of monthsBetween(f.startMonth, nowMonth)) {
-      const key = `${f.id}:${m}`
+      const key = fixedKey(f.id, m)
       if (skipped.has(key) || existing.has(key)) continue
       created.push({
         id: uid(),
@@ -52,8 +59,6 @@ function materialize(data: AppData): AppData {
   return { ...data, transactions: [...data.transactions, ...created] }
 }
 
-const tombstone = (fixedId: string, date: string) => `${fixedId}:${monthKeyOf(date)}`
-
 function reducer(data: AppData, action: Action): AppData {
   switch (action.type) {
     case 'tx/add':
@@ -61,12 +66,15 @@ function reducer(data: AppData, action: Action): AppData {
 
     case 'tx/update': {
       const prev = data.transactions.find((t) => t.id === action.tx.id)
-      const transactions = data.transactions.map((t) => (t.id === action.tx.id ? action.tx : t))
+      // Kopplingen till en fast post ägs av reducern: en redigering kan
+      // aldrig tappa fixedId, oavsett vad formuläret skickar.
+      const next = { ...action.tx, fixedId: prev?.fixedId }
+      const transactions = data.transactions.map((t) => (t.id === next.id ? next : t))
       // Om en fast posts transaktion flyttas till en annan månad får ursprungs-
       // månaden en tombstone, annars återskapas posten där som dubblett.
       let skippedFixed = data.skippedFixed
-      if (prev?.fixedId && monthKeyOf(prev.date) !== monthKeyOf(action.tx.date)) {
-        skippedFixed = [...skippedFixed, tombstone(prev.fixedId, prev.date)]
+      if (prev?.fixedId && monthKeyOf(prev.date) !== monthKeyOf(next.date)) {
+        skippedFixed = [...skippedFixed, fixedKey(prev.fixedId, monthKeyOf(prev.date))]
       }
       return { ...data, transactions, skippedFixed }
     }
@@ -75,7 +83,9 @@ function reducer(data: AppData, action: Action): AppData {
       const prev = data.transactions.find((t) => t.id === action.id)
       const transactions = data.transactions.filter((t) => t.id !== action.id)
       let skippedFixed = data.skippedFixed
-      if (prev?.fixedId) skippedFixed = [...skippedFixed, tombstone(prev.fixedId, prev.date)]
+      if (prev?.fixedId) {
+        skippedFixed = [...skippedFixed, fixedKey(prev.fixedId, monthKeyOf(prev.date))]
+      }
       return { ...data, transactions, skippedFixed }
     }
 
@@ -89,10 +99,8 @@ function reducer(data: AppData, action: Action): AppData {
       }
 
     case 'cat/delete': {
-      const used =
-        data.transactions.some((t) => t.categoryId === action.id) ||
-        data.fixed.some((f) => f.categoryId === action.id)
-      if (used) return data // UI:t förhindrar detta; skyddet finns kvar här.
+      // UI:t förhindrar detta; skyddet finns kvar här med samma delade regel.
+      if (isCategoryUsed(data, action.id)) return data
       const budgets = { ...data.budgets }
       delete budgets[action.id]
       return { ...data, categories: data.categories.filter((c) => c.id !== action.id), budgets }
@@ -157,10 +165,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [data])
 
   // Tema: 'auto' följer systemet, annars låses via data-theme på <html>.
+  // Speglas till en egen liten nyckel så att anti-flash-skriptet i index.html
+  // slipper läsa och parsa hela datablobben före first paint.
   useEffect(() => {
     const theme = data.settings.theme
     if (theme === 'auto') delete document.documentElement.dataset.theme
     else document.documentElement.dataset.theme = theme
+    try {
+      localStorage.setItem(THEME_KEY, theme)
+    } catch {
+      // Blockerad lagring hanteras redan av persistError.
+    }
   }, [data.settings.theme])
 
   // Fångar månadsskiften i en flik/PWA som stått öppen länge.

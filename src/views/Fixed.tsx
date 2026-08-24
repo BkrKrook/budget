@@ -1,12 +1,15 @@
 import { useMemo, useState } from 'react'
 import { useApp } from '../data/AppState'
 import { currentMonthKey } from '../lib/dates'
-import { formatKr, formatSignedKr, parseKr } from '../lib/money'
+import { formatNetKr, formatSignedKr, oreToInput, parseKr } from '../lib/money'
 import { categoryById } from '../lib/selectors'
 import { uid } from '../lib/id'
 import type { FixedItem, TxType } from '../types'
+import { AmountField } from '../components/AmountField'
+import { CategoryChips, resolveCategory } from '../components/CategoryChips'
+import { Dot, PlusIcon } from '../components/Icons'
+import { Segmented, TX_TYPE_OPTIONS } from '../components/Segmented'
 import { Sheet } from '../components/Sheet'
-import { PlusIcon } from '../components/Icons'
 
 export function Fixed() {
   const { data, dispatch } = useApp()
@@ -53,11 +56,7 @@ export function Fixed() {
               return (
                 <div key={item.id} className={`row static${item.active ? '' : ' inactive'}`}>
                   <button type="button" className="row-tap" onClick={() => setSheet(item)}>
-                    <span
-                      className="dot big"
-                      style={{ background: `var(--slot-${cat?.slot ?? 0})` }}
-                      aria-hidden
-                    />
+                    <Dot slot={cat?.slot ?? 0} big />
                     <span className="row-main">
                       <span className="row-title">{item.name}</span>
                       <span className="row-sub">
@@ -84,10 +83,7 @@ export function Fixed() {
           </div>
           <p className="hint center">
             Netto per månad från aktiva poster:{' '}
-            <strong className={monthlyNet >= 0 ? 'pos' : 'neg'}>
-              {monthlyNet > 0 ? '+' : ''}
-              {formatKr(monthlyNet)}
-            </strong>
+            <strong className={monthlyNet >= 0 ? 'pos' : 'neg'}>{formatNetKr(monthlyNet)}</strong>
           </p>
           <p className="hint center">
             Posterna läggs in automatiskt i historiken varje månad. Tar du bort en enskild månads
@@ -108,13 +104,13 @@ function FixedForm({ item, onClose }: { item: FixedItem | null; onClose: () => v
   const { data, dispatch } = useApp()
   const [type, setType] = useState<TxType>(item?.type ?? 'expense')
   const [name, setName] = useState(item?.name ?? '')
-  const [amount, setAmount] = useState(item ? String(item.amountOre / 100).replace('.', ',') : '')
+  const [amount, setAmount] = useState(item ? oreToInput(item.amountOre) : '')
   const [categoryId, setCategoryId] = useState(item?.categoryId ?? '')
   const [day, setDay] = useState(item?.dayOfMonth ?? 25)
   const [error, setError] = useState('')
 
   const categories = data.categories.filter((c) => c.type === type)
-  const chosen = categories.some((c) => c.id === categoryId) ? categoryId : (categories[0]?.id ?? '')
+  const chosen = resolveCategory(categories, categoryId)
 
   const save = () => {
     const amountOre = parseKr(amount)
@@ -152,26 +148,7 @@ function FixedForm({ item, onClose }: { item: FixedItem | null; onClose: () => v
           save()
         }}
       >
-        <div className="segmented" role="radiogroup" aria-label="Typ">
-          <button
-            type="button"
-            role="radio"
-            aria-checked={type === 'expense'}
-            className={type === 'expense' ? 'on' : ''}
-            onClick={() => setType('expense')}
-          >
-            Utgift
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={type === 'income'}
-            className={type === 'income' ? 'on' : ''}
-            onClick={() => setType('income')}
-          >
-            Inkomst
-          </button>
-        </div>
+        <Segmented value={type} onChange={setType} options={TX_TYPE_OPTIONS} label="Typ" />
 
         <label className="field">
           <span>Namn</span>
@@ -185,39 +162,9 @@ function FixedForm({ item, onClose }: { item: FixedItem | null; onClose: () => v
           />
         </label>
 
-        <label className="field">
-          <span>Belopp</span>
-          <div className="amount-wrap">
-            <input
-              type="text"
-              inputMode="decimal"
-              placeholder="0"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              aria-label="Belopp i kronor"
-            />
-            <span className="amount-unit">kr</span>
-          </div>
-        </label>
+        <AmountField label="Belopp" value={amount} onChange={setAmount} />
 
-        <div className="field">
-          <span>Kategori</span>
-          <div className="chips" role="radiogroup" aria-label="Kategori">
-            {categories.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                role="radio"
-                aria-checked={chosen === c.id}
-                className={`chip${chosen === c.id ? ' on' : ''}`}
-                onClick={() => setCategoryId(c.id)}
-              >
-                <span className="dot" style={{ background: `var(--slot-${c.slot})` }} aria-hidden />
-                {c.name}
-              </button>
-            ))}
-          </div>
-        </div>
+        <CategoryChips categories={categories} value={chosen} onChange={setCategoryId} />
 
         <label className="field">
           <span>Dag i månaden</span>

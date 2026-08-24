@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
 import { useApp } from '../data/AppState'
 import { dayLabel } from '../lib/dates'
-import { formatSignedKr, formatKr } from '../lib/money'
+import { formatSignedKr } from '../lib/money'
 import { categoryById, monthTotals, txForMonth } from '../lib/selectors'
 import type { Transaction, TxType } from '../types'
+import { Dot, RepeatIcon } from '../components/Icons'
 import { MonthSwitcher } from '../components/MonthSwitcher'
-import { RepeatIcon } from '../components/Icons'
+import { Segmented } from '../components/Segmented'
 
 interface Props {
   month: string
@@ -15,6 +16,12 @@ interface Props {
 }
 
 type Filter = 'all' | TxType
+
+const FILTER_OPTIONS: readonly (readonly [Filter, string])[] = [
+  ['all', 'Alla'],
+  ['expense', 'Utgifter'],
+  ['income', 'Inkomster'],
+]
 
 export function Transactions({ month, onMonth, onEditTx, onAddTx }: Props) {
   const { data } = useApp()
@@ -42,31 +49,12 @@ export function Transactions({ month, onMonth, onEditTx, onAddTx }: Props) {
       <MonthSwitcher month={month} onChange={onMonth} />
 
       <p className="month-sums">
-        <span className="neg">−{formatKr(totals.expenseOre)}</span>
+        <span className="neg">{formatSignedKr(totals.expenseOre, 'expense')}</span>
         {' · '}
-        <span className="pos">+{formatKr(totals.incomeOre)}</span>
+        <span className="pos">{formatSignedKr(totals.incomeOre, 'income')}</span>
       </p>
 
-      <div className="segmented small" role="radiogroup" aria-label="Filtrera">
-        {(
-          [
-            ['all', 'Alla'],
-            ['expense', 'Utgifter'],
-            ['income', 'Inkomster'],
-          ] as [Filter, string][]
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            role="radio"
-            aria-checked={filter === id}
-            className={filter === id ? 'on' : ''}
-            onClick={() => setFilter(id)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <Segmented value={filter} onChange={setFilter} options={FILTER_OPTIONS} label="Filtrera" small />
 
       {groups.length === 0 && (
         <section className="card empty">
@@ -88,11 +76,7 @@ export function Transactions({ month, onMonth, onEditTx, onAddTx }: Props) {
                 t.note && t.note !== cat?.name ? t.note : t.fixedId ? 'Fast post' : t.note
               return (
                 <button key={t.id} type="button" className="row" onClick={() => onEditTx(t)}>
-                  <span
-                    className="dot big"
-                    style={{ background: `var(--slot-${cat?.slot ?? 0})` }}
-                    aria-hidden
-                  />
+                  <Dot slot={cat?.slot ?? 0} big />
                   <span className="row-main">
                     <span className="row-title">{cat?.name ?? 'Okänd kategori'}</span>
                     {(t.note || t.fixedId) && (

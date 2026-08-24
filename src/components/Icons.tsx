@@ -1,6 +1,13 @@
+import { slotColor } from '../data/defaults'
+
 interface IconProps {
   size?: number
 }
+
+/** Färgprick för en kategoris palettplats. */
+export const Dot = ({ slot, big = false }: { slot: number; big?: boolean }) => (
+  <span className={`dot${big ? ' big' : ''}`} style={{ background: slotColor(slot) }} aria-hidden />
+)
 
 function svgProps({ size = 22 }: IconProps) {
   return {

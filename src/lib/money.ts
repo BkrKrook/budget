@@ -18,6 +18,17 @@ export function formatSignedKr(ore: number, type: TxType): string {
   return `${type === 'income' ? '+' : '−'}${formatKr(Math.abs(ore))}`
 }
 
+/** Nettobelopp med tecken: '+1 234 kr' / '−1 234 kr' / '0 kr'. */
+export function formatNetKr(ore: number): string {
+  return ore > 0 ? `+${formatKr(ore)}` : formatKr(ore)
+}
+
+/** Öre → redigerbar inmatningssträng ('12500' / '129,50'); inversen av parseKr. */
+export function oreToInput(ore: number): string {
+  const kr = ore / 100
+  return (Number.isInteger(kr) ? String(kr) : kr.toFixed(2)).replace('.', ',')
+}
+
 /** Tolkar användarinmatning som '129', '129,50', '1 234.50', '1.234,56' → öre. */
 export function parseKr(input: string): number | null {
   let s = input.trim().replace(/[\s  ]/g, '').replace(/kr$/i, '')

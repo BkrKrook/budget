@@ -1,4 +1,4 @@
-import { formatKr } from '../../lib/money'
+import { formatKr, formatNetKr } from '../../lib/money'
 import type { MonthTotals } from '../../lib/selectors'
 
 /** KPI-rad: tre stat-brickor för vald månad. */
@@ -16,8 +16,7 @@ export function StatTiles({ totals }: { totals: MonthTotals }) {
       <div className="stat-tile">
         <span className="stat-label">Saldo</span>
         <span className={`stat-value ${totals.netOre >= 0 ? 'pos' : 'neg'}`}>
-          {totals.netOre > 0 ? '+' : ''}
-          {formatKr(totals.netOre)}
+          {formatNetKr(totals.netOre)}
         </span>
       </div>
     </div>

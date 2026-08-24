@@ -1,25 +1,24 @@
+import { slotColor } from '../../data/defaults'
 import { formatKr } from '../../lib/money'
 import type { CategorySum } from '../../lib/selectors'
+import { Dot } from '../Icons'
 
-interface Props {
-  rows: CategorySum[]
-  /** Fler kategorier än så viks ihop till en grå "Övriga kategorier"-rad. */
-  maxVisible?: number
-}
+/** Fler kategorier än så viks ihop till en grå "Övriga kategorier"-rad. */
+const MAX_VISIBLE = 6
 
 /** Horisontell stapellista: varje rad bär sin egen etikett och sitt värde,
  *  så färgen är aldrig den enda identitetsbäraren. */
-export function CategoryBars({ rows, maxVisible = 6 }: Props) {
+export function CategoryBars({ rows }: { rows: CategorySum[] }) {
   if (rows.length === 0) return null
-  const shown = rows.length > maxVisible ? rows.slice(0, maxVisible - 1) : rows
+  const shown = rows.length > MAX_VISIBLE ? rows.slice(0, MAX_VISIBLE - 1) : rows
   const folded = rows.slice(shown.length)
   const foldedSum = folded.reduce((s, r) => s + r.amountOre, 0)
   const max = Math.max(...rows.map((r) => r.amountOre), foldedSum)
 
   const bar = (key: string, name: string, slot: number, amountOre: number) => (
-    <div className="catbar-row" key={key}>
+    <div key={key}>
       <div className="catbar-top">
-        <span className="dot" style={{ background: `var(--slot-${slot})` }} aria-hidden />
+        <Dot slot={slot} />
         <span className="catbar-name">{name}</span>
         <span className="catbar-val">{formatKr(amountOre)}</span>
       </div>
@@ -28,7 +27,7 @@ export function CategoryBars({ rows, maxVisible = 6 }: Props) {
           className="catbar-bar"
           style={{
             width: `${Math.max(1.5, (amountOre / max) * 100)}%`,
-            background: `var(--slot-${slot})`,
+            background: slotColor(slot),
           }}
         />
       </div>

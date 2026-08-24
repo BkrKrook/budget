@@ -1,15 +1,25 @@
 import { useRef, useState } from 'react'
 import { useApp } from '../data/AppState'
-import { SLOT_NAMES } from '../data/defaults'
+import { SLOT_NAMES, slotColor } from '../data/defaults'
 import { exportJson, sanitize } from '../data/storage'
 import { todayISO } from '../lib/dates'
+import { isCategoryUsed } from '../lib/selectors'
 import { uid } from '../lib/id'
-import type { Category, Theme, TxType } from '../types'
+import type { AppData, Category, Theme, TxType } from '../types'
+import { Dot } from '../components/Icons'
+import { Segmented } from '../components/Segmented'
 import { Sheet } from '../components/Sheet'
+
+const THEME_OPTIONS: readonly (readonly [Theme, string])[] = [
+  ['auto', 'Auto'],
+  ['light', 'Ljust'],
+  ['dark', 'Mörkt'],
+]
 
 export function More() {
   const { data, dispatch } = useApp()
-  const [catSheet, setCatSheet] = useState<Category | TxType | null>(null) // Category = redigera, TxType = ny
+  // Category = redigera befintlig, TxType = ny kategori av den typen.
+  const [catSheet, setCatSheet] = useState<Category | TxType | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const doExport = () => {
@@ -25,22 +35,23 @@ export function More() {
   }
 
   const doImport = async (file: File) => {
+    let parsed: AppData | null = null
     try {
-      const parsed = sanitize(JSON.parse(await file.text()))
-      if (!parsed) {
-        window.alert('Filen kunde inte läsas – är det en export från Min budget?')
-        return
-      }
-      if (
-        window.confirm(
-          `Importen innehåller ${parsed.transactions.length} transaktioner och ersätter ALL nuvarande data på den här enheten. Fortsätt?`,
-        )
-      ) {
-        dispatch({ type: 'data/import', data: parsed })
-        window.alert('Importen är klar.')
-      }
+      parsed = sanitize(JSON.parse(await file.text()))
     } catch {
+      // Ogiltig JSON – parsed förblir null.
+    }
+    if (!parsed) {
       window.alert('Filen kunde inte läsas – är det en export från Min budget?')
+      return
+    }
+    if (
+      window.confirm(
+        `Importen innehåller ${parsed.transactions.length} transaktioner och ersätter ALL nuvarande data på den här enheten. Fortsätt?`,
+      )
+    ) {
+      dispatch({ type: 'data/import', data: parsed })
+      window.alert('Importen är klar.')
     }
   }
 
@@ -50,12 +61,6 @@ export function More() {
     dispatch({ type: 'data/reset' })
   }
 
-  const themes: [Theme, string][] = [
-    ['auto', 'Auto'],
-    ['light', 'Ljust'],
-    ['dark', 'Mörkt'],
-  ]
-
   return (
     <div className="view">
       <header className="topbar">
@@ -63,21 +68,13 @@ export function More() {
       </header>
 
       <h2 className="section-head">Utseende</h2>
-      <div className="card pad">
-        <div className="segmented" role="radiogroup" aria-label="Tema">
-          {themes.map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              role="radio"
-              aria-checked={data.settings.theme === id}
-              className={data.settings.theme === id ? 'on' : ''}
-              onClick={() => dispatch({ type: 'theme/set', theme: id })}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+      <div className="card">
+        <Segmented
+          value={data.settings.theme}
+          onChange={(theme) => dispatch({ type: 'theme/set', theme })}
+          options={THEME_OPTIONS}
+          label="Tema"
+        />
       </div>
 
       <h2 className="section-head">Kategorier</h2>
@@ -89,7 +86,7 @@ export function More() {
               .filter((c) => c.type === type)
               .map((c) => (
                 <button key={c.id} type="button" className="row" onClick={() => setCatSheet(c)}>
-                  <span className="dot big" style={{ background: `var(--slot-${c.slot})` }} aria-hidden />
+                  <Dot slot={c.slot} big />
                   <span className="row-main">
                     <span className="row-title">{c.name}</span>
                   </span>
@@ -104,7 +101,7 @@ export function More() {
       ))}
 
       <h2 className="section-head">Data</h2>
-      <div className="card pad btn-col">
+      <div className="card btn-col">
         <button type="button" className="btn" onClick={doExport}>
           Exportera säkerhetskopia (JSON)
         </button>
@@ -128,7 +125,7 @@ export function More() {
       </div>
 
       <h2 className="section-head">Om appen</h2>
-      <div className="card pad about">
+      <div className="card about">
         <p>
           <strong>Min budget</strong> sparar all data lokalt i den här webbläsaren – ingenting
           skickas till någon server och inget konto behövs.
@@ -143,36 +140,20 @@ export function More() {
         </p>
       </div>
 
-      {catSheet && (
-        <CategoryForm
-          category={typeof catSheet === 'object' ? catSheet : null}
-          newType={typeof catSheet === 'string' ? catSheet : 'expense'}
-          onClose={() => setCatSheet(null)}
-        />
-      )}
+      {catSheet && <CategoryForm init={catSheet} onClose={() => setCatSheet(null)} />}
     </div>
   )
 }
 
-function CategoryForm({
-  category,
-  newType,
-  onClose,
-}: {
-  category: Category | null
-  newType: TxType
-  onClose: () => void
-}) {
+function CategoryForm({ init, onClose }: { init: Category | TxType; onClose: () => void }) {
   const { data, dispatch } = useApp()
+  const category = typeof init === 'string' ? null : init
+  const type = category?.type ?? (init as TxType)
   const [name, setName] = useState(category?.name ?? '')
   const [slot, setSlot] = useState(category?.slot ?? 1)
   const [error, setError] = useState('')
-  const type = category?.type ?? newType
 
-  const used = category
-    ? data.transactions.some((t) => t.categoryId === category.id) ||
-      data.fixed.some((f) => f.categoryId === category.id)
-    : false
+  const used = category ? isCategoryUsed(data, category.id) : false
 
   const save = () => {
     const trimmed = name.trim()
@@ -224,7 +205,7 @@ function CategoryForm({
                 aria-checked={slot === i}
                 aria-label={label}
                 className={`swatch${slot === i ? ' on' : ''}`}
-                style={{ background: `var(--slot-${i})` }}
+                style={{ background: slotColor(i) }}
                 onClick={() => setSlot(i)}
               />
             ))}

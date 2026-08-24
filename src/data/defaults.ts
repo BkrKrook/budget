@@ -14,7 +14,10 @@ export const SLOT_NAMES = [
   'Röd',
 ] as const
 
-export const DEFAULT_CATEGORIES: Category[] = [
+/** Enda stället som känner till konventionen slot → CSS-variabel. */
+export const slotColor = (slot: number) => `var(--slot-${slot})`
+
+const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat-boende', name: 'Boende', type: 'expense', slot: 1 },
   { id: 'cat-mat', name: 'Mat & dagligvaror', type: 'expense', slot: 2 },
   { id: 'cat-transport', name: 'Transport', type: 'expense', slot: 3 },

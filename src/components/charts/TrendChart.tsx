@@ -1,7 +1,13 @@
 import { useState } from 'react'
+import { slotColor } from '../../data/defaults'
 import { monthLabel, shortMonthLabel } from '../../lib/dates'
-import { formatKr } from '../../lib/money'
+import { formatKr, formatNetKr } from '../../lib/money'
 import type { TrendPoint } from '../../lib/selectors'
+import { Dot } from '../Icons'
+
+/** Seriernas fasta palettplatser i diagrammet. */
+const INCOME_SLOT = 1
+const EXPENSE_SLOT = 2
 
 /** Avrundar uppåt till ett "snyggt" axelvärde, med halverbara steg så att
  *  även mittengridlinjen blir ett rent tal. */
@@ -33,10 +39,10 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
       <div className="trend-head">
         <div className="legend">
           <span className="legend-item">
-            <span className="dot" style={{ background: 'var(--slot-1)' }} aria-hidden /> Inkomster
+            <Dot slot={INCOME_SLOT} /> Inkomster
           </span>
           <span className="legend-item">
-            <span className="dot" style={{ background: 'var(--slot-2)' }} aria-hidden /> Utgifter
+            <Dot slot={EXPENSE_SLOT} /> Utgifter
           </span>
         </div>
         <button type="button" className="text-btn" onClick={() => setShowTable(!showTable)}>
@@ -55,20 +61,14 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
             </tr>
           </thead>
           <tbody>
-            {points.map((p) => {
-              const net = p.incomeOre - p.expenseOre
-              return (
-                <tr key={p.monthKey}>
-                  <th scope="row">{shortMonthLabel(p.monthKey)}</th>
-                  <td>{formatKr(p.incomeOre)}</td>
-                  <td>{formatKr(p.expenseOre)}</td>
-                  <td className={net >= 0 ? 'pos' : 'neg'}>
-                    {net > 0 ? '+' : ''}
-                    {formatKr(net)}
-                  </td>
-                </tr>
-              )
-            })}
+            {points.map((p) => (
+              <tr key={p.monthKey}>
+                <th scope="row">{shortMonthLabel(p.monthKey)}</th>
+                <td>{formatKr(p.incomeOre)}</td>
+                <td>{formatKr(p.expenseOre)}</td>
+                <td className={p.netOre >= 0 ? 'pos' : 'neg'}>{formatNetKr(p.netOre)}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       ) : (
@@ -85,7 +85,7 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
             <div className="gridline" style={{ bottom: '50%' }}>
               <span>{axisFmt.format(topKr / 2)}</span>
             </div>
-            <div className="gridline baseline" style={{ bottom: 0 }}>
+            <div className="gridline" style={{ bottom: 0 }}>
               <span>0</span>
             </div>
             <div className="trend-cols">
@@ -104,11 +104,11 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
                     <span className="trend-bars">
                       <span
                         className="trend-bar"
-                        style={{ height: h(p.incomeOre), background: 'var(--slot-1)' }}
+                        style={{ height: h(p.incomeOre), background: slotColor(INCOME_SLOT) }}
                       />
                       <span
                         className="trend-bar"
-                        style={{ height: h(p.expenseOre), background: 'var(--slot-2)' }}
+                        style={{ height: h(p.expenseOre), background: slotColor(EXPENSE_SLOT) }}
                       />
                     </span>
                     <span className="trend-x">{shortMonthLabel(p.monthKey)}</span>

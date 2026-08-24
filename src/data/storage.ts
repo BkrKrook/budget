@@ -1,5 +1,6 @@
 import type { AppData, Category, FixedItem, Theme, Transaction } from '../types'
-import { defaultData } from './defaults'
+import { isISODate, isMonthKey } from '../lib/dates'
+import { defaultData, SLOT_NAMES } from './defaults'
 
 /** Lagringslagret är en utbytbar adapter. Idag localStorage; en framtida
  *  molnadapter (t.ex. Supabase med inloggning och synk mellan enheter)
@@ -11,9 +12,13 @@ export interface StorageAdapter {
   save(data: AppData): boolean
 }
 
-export const STORAGE_KEY = 'minbudget:data:v1'
+const STORAGE_KEY = 'minbudget:data:v1'
 
-class LocalStorageAdapter implements StorageAdapter {
+/** Spegel av valt tema, läses av anti-flash-skriptet i index.html
+ *  (som inte kan importera konstanten – håll dem i synk). */
+export const THEME_KEY = 'minbudget:theme'
+
+export const storage: StorageAdapter = {
   load(): AppData | null {
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
@@ -22,7 +27,7 @@ class LocalStorageAdapter implements StorageAdapter {
     } catch {
       return null
     }
-  }
+  },
 
   save(data: AppData): boolean {
     try {
@@ -31,16 +36,14 @@ class LocalStorageAdapter implements StorageAdapter {
     } catch {
       return false
     }
-  }
+  },
 }
-
-export const storage: StorageAdapter = new LocalStorageAdapter()
 
 const isStr = (v: unknown): v is string => typeof v === 'string'
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 const isTxType = (v: unknown): v is 'expense' | 'income' => v === 'expense' || v === 'income'
-const isMonth = (v: unknown): v is string => isStr(v) && /^\d{4}-\d{2}$/.test(v)
-const isDate = (v: unknown): v is string => isStr(v) && /^\d{4}-\d{2}-\d{2}$/.test(v)
+const isMonth = (v: unknown): v is string => isStr(v) && isMonthKey(v)
+const isDate = (v: unknown): v is string => isStr(v) && isISODate(v)
 
 /** Validerar och städar okänd JSON (import eller lagrad data) till ett giltigt
  *  AppData. Ogiltiga poster hoppas över i stället för att fälla hela läsningen. */
@@ -55,7 +58,7 @@ export function sanitize(raw: unknown): AppData | null {
     ? r.categories.flatMap((c: unknown): Category[] => {
         const o = c as Record<string, unknown>
         if (!o || !isStr(o.id) || !isStr(o.name) || !isTxType(o.type)) return []
-        const slot = isNum(o.slot) ? Math.min(8, Math.max(0, Math.round(o.slot))) : 0
+        const slot = isNum(o.slot) ? Math.min(SLOT_NAMES.length - 1, Math.max(0, Math.round(o.slot))) : 0
         return [{ id: o.id, name: o.name, type: o.type, slot }]
       })
     : base.categories

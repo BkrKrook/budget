@@ -1,8 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useApp } from '../data/AppState'
-import { formatKr, parseKr } from '../lib/money'
+import { isISODate } from '../lib/dates'
+import { formatKr, oreToInput, parseKr } from '../lib/money'
 import { uid } from '../lib/id'
 import type { Transaction, TxType } from '../types'
+import { AmountField } from './AmountField'
+import { CategoryChips, resolveCategory } from './CategoryChips'
+import { Segmented, TX_TYPE_OPTIONS } from './Segmented'
 import { Sheet } from './Sheet'
 
 interface Props {
@@ -15,14 +19,14 @@ interface Props {
 export function TxForm({ initial, defaultDate, onClose }: Props) {
   const { data, dispatch } = useApp()
   const [type, setType] = useState<TxType>(initial?.type ?? 'expense')
-  const [amount, setAmount] = useState(initial ? String(initial.amountOre / 100).replace('.', ',') : '')
+  const [amount, setAmount] = useState(initial ? oreToInput(initial.amountOre) : '')
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? '')
   const [date, setDate] = useState(initial?.date ?? defaultDate)
   const [note, setNote] = useState(initial?.note ?? '')
   const [error, setError] = useState('')
 
-  const categories = useMemo(() => data.categories.filter((c) => c.type === type), [data, type])
-  const chosen = categories.some((c) => c.id === categoryId) ? categoryId : (categories[0]?.id ?? '')
+  const categories = data.categories.filter((c) => c.type === type)
+  const chosen = resolveCategory(categories, categoryId)
 
   const switchType = (t: TxType) => {
     setType(t)
@@ -39,7 +43,7 @@ export function TxForm({ initial, defaultDate, onClose }: Props) {
       setError('Välj en kategori.')
       return
     }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    if (!isISODate(date)) {
       setError('Ange ett giltigt datum.')
       return
     }
@@ -50,7 +54,6 @@ export function TxForm({ initial, defaultDate, onClose }: Props) {
       categoryId: chosen,
       date,
       note: note.trim() || undefined,
-      fixedId: initial?.fixedId,
     }
     dispatch({ type: initial ? 'tx/update' : 'tx/add', tx })
     onClose()
@@ -72,61 +75,11 @@ export function TxForm({ initial, defaultDate, onClose }: Props) {
           save()
         }}
       >
-        <div className="segmented" role="radiogroup" aria-label="Typ">
-          <button
-            type="button"
-            role="radio"
-            aria-checked={type === 'expense'}
-            className={type === 'expense' ? 'on' : ''}
-            onClick={() => switchType('expense')}
-          >
-            Utgift
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={type === 'income'}
-            className={type === 'income' ? 'on' : ''}
-            onClick={() => switchType('income')}
-          >
-            Inkomst
-          </button>
-        </div>
+        <Segmented value={type} onChange={switchType} options={TX_TYPE_OPTIONS} label="Typ" />
 
-        <label className="field">
-          <span>Belopp</span>
-          <div className="amount-wrap">
-            <input
-              type="text"
-              inputMode="decimal"
-              placeholder="0"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              autoFocus={!initial}
-              aria-label="Belopp i kronor"
-            />
-            <span className="amount-unit">kr</span>
-          </div>
-        </label>
+        <AmountField label="Belopp" value={amount} onChange={setAmount} autoFocus={!initial} />
 
-        <div className="field">
-          <span>Kategori</span>
-          <div className="chips" role="radiogroup" aria-label="Kategori">
-            {categories.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                role="radio"
-                aria-checked={chosen === c.id}
-                className={`chip${chosen === c.id ? ' on' : ''}`}
-                onClick={() => setCategoryId(c.id)}
-              >
-                <span className="dot" style={{ background: `var(--slot-${c.slot})` }} aria-hidden />
-                {c.name}
-              </button>
-            ))}
-          </div>
-        </div>
+        <CategoryChips categories={categories} value={chosen} onChange={setCategoryId} />
 
         <label className="field">
           <span>Datum</span>

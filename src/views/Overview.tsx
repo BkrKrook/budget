@@ -1,6 +1,6 @@
 import { useApp } from '../data/AppState'
-import { formatKr } from '../lib/money'
 import {
+  budgetRows,
   expenseByCategory,
   hasAnyData,
   monthTotals,
@@ -8,11 +8,11 @@ import {
   trend,
 } from '../lib/selectors'
 import type { Tab } from '../components/BottomNav'
+import { BudgetSummary } from '../components/BudgetSummary'
 import { MonthSwitcher } from '../components/MonthSwitcher'
 import { CategoryBars } from '../components/charts/CategoryBars'
 import { StatTiles } from '../components/charts/StatTiles'
 import { TrendChart } from '../components/charts/TrendChart'
-import { Meter } from '../components/charts/Meter'
 
 interface Props {
   month: string
@@ -25,10 +25,9 @@ export function Overview({ month, onMonth, onAddTx, goTo }: Props) {
   const { data } = useApp()
   const totals = monthTotals(data, month)
   const catRows = expenseByCategory(data, month)
-  const budget = totalBudget(data, month)
+  const budget = totalBudget(budgetRows(data, month))
   const trendPoints = trend(data, month, 6)
   const empty = !hasAnyData(data)
-  const leftOre = budget.capOre - budget.spentOre
 
   return (
     <div className="view">
@@ -70,16 +69,8 @@ export function Overview({ month, onMonth, onAddTx, goTo }: Props) {
       {!empty && <StatTiles totals={totals} />}
 
       {budget.capOre > 0 && (
-        <button type="button" className="card tappable budget-summary" onClick={() => goTo('budget')}>
-          <span className="card-title">Kvar att spendera</span>
-          <span className={`hero ${leftOre >= 0 ? 'pos' : 'neg'}`}>
-            {leftOre < 0 ? '−' : ''}
-            {formatKr(Math.abs(leftOre))}
-          </span>
-          <Meter ratio={budget.capOre > 0 ? budget.spentOre / budget.capOre : 0} slot={1} />
-          <span className="sub">
-            {formatKr(budget.spentOre)} använt av {formatKr(budget.capOre)} budgeterat
-          </span>
+        <button type="button" className="card tappable budget-card" onClick={() => goTo('budget')}>
+          <BudgetSummary capOre={budget.capOre} spentOre={budget.spentOre} />
         </button>
       )}
 
