@@ -136,6 +136,70 @@ export function totalBudget(rows: BudgetRow[]): { capOre: number; spentOre: numb
   return { capOre, spentOre }
 }
 
+export interface BudgetPlan {
+  /** Månadens aktiva fasta inkomster – ramen som planen mäts mot. */
+  incomeOre: number
+  /** Fasta utgifter som inte täcks av något månadstak. */
+  fixedExpenseOre: number
+  /** Summa månadstak för utgiftskategorier – matchar budgetlistan. */
+  budgetOre: number
+  /** Sparmål, samt fast sparande som saknar eller överstiger sitt mål. */
+  savingOre: number
+  /** Fasta utgifter som ryms inom en budgeterad kategori – redovisas som
+   *  förklaring i UI:t i stället för att dubbelräknas i planen. */
+  fixedInBudgetsOre: number
+  /** fixedExpenseOre + budgetOre + savingOre. */
+  plannedOre: number
+  /** incomeOre − plannedOre; negativt när mer är fördelat än inkomsten. */
+  unallocatedOre: number
+}
+
+/** Månadens plan mätt mot de fasta inkomsterna. Aktiva fasta poster räknas
+ *  från sin startmånad; ett månadstak antas täcka kategorins fasta utgifter,
+ *  så bara den del som överstiger taket hamnar under fasta utgifter. */
+export function budgetPlan(data: AppData, monthKey: string): BudgetPlan {
+  let incomeOre = 0
+  const fixedExp = new Map<string, number>()
+  const fixedSav = new Map<string, number>()
+  for (const f of data.fixed) {
+    if (!f.active || f.startMonth > monthKey) continue
+    if (f.type === 'income') incomeOre += f.amountOre
+    else {
+      const sums = f.type === 'expense' ? fixedExp : fixedSav
+      sums.set(f.categoryId, (sums.get(f.categoryId) ?? 0) + f.amountOre)
+    }
+  }
+  let fixedExpenseOre = 0
+  let budgetOre = 0
+  let savingOre = 0
+  let fixedInBudgetsOre = 0
+  for (const c of data.categories) {
+    const cap = data.budgets[c.id]
+    if (c.type === 'expense') {
+      const fix = fixedExp.get(c.id) ?? 0
+      if (cap === undefined) {
+        fixedExpenseOre += fix
+      } else {
+        budgetOre += cap
+        fixedInBudgetsOre += Math.min(cap, fix)
+        fixedExpenseOre += Math.max(0, fix - cap)
+      }
+    } else if (c.type === 'saving') {
+      savingOre += Math.max(cap ?? 0, fixedSav.get(c.id) ?? 0)
+    }
+  }
+  const plannedOre = fixedExpenseOre + budgetOre + savingOre
+  return {
+    incomeOre,
+    fixedExpenseOre,
+    budgetOre,
+    savingOre,
+    fixedInBudgetsOre,
+    plannedOre,
+    unallocatedOre: incomeOre - plannedOre,
+  }
+}
+
 /** Har det någonsin funnits data? Styr tomtillstånd/onboarding. */
 export function hasAnyData(data: AppData): boolean {
   return data.transactions.length > 0 || data.fixed.length > 0

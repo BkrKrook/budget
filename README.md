@@ -11,6 +11,9 @@ fylls i automatiskt varje månad, samt grafer och trender.
 - **Historik** – alla transaktioner grupperade per dag, med snabb registrering via
   plusknappen och filtrering på utgifter/inkomster.
 - **Budget** – sätt ett månadstak per kategori och följ hur mycket som är kvar.
+  Månadens ram mäts mot de fasta inkomsterna: kortet högst upp visar hur mycket
+  som är uppbokat av fasta utgifter, budgetar och sparande – och vad som är
+  ofördelat – samt hur mycket av inkomsten som faktiskt använts.
   Överdrag markeras tydligt.
 - **Sparande** – registrera enstaka insättningar (eller låt en fast post spara
   automatiskt varje månad) och sätt sparmål per sparkategori. Sparat räknas bort

@@ -47,7 +47,7 @@ export default function App() {
             onAddTx={() => setTxSheet('new')}
           />
         )}
-        {tab === 'budget' && <Budget month={month} onMonth={setMonth} />}
+        {tab === 'budget' && <Budget month={month} onMonth={setMonth} goTo={setTab} />}
         {tab === 'fixed' && <Fixed />}
         {tab === 'more' && <More />}
       </main>

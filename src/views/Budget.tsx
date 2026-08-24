@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useApp } from '../data/AppState'
 import { formatKr, oreToInput, parseKr } from '../lib/money'
-import { budgetRows, savingRows, totalBudget } from '../lib/selectors'
+import { budgetPlan, budgetRows, monthTotals, savingRows, totalBudget } from '../lib/selectors'
 import type { SavingRow } from '../lib/selectors'
 import type { Category } from '../types'
 import { AmountField } from '../components/AmountField'
+import type { Tab } from '../components/BottomNav'
+import { BudgetPlanCard } from '../components/BudgetPlanCard'
 import { BudgetSummary } from '../components/BudgetSummary'
 import { MonthSwitcher } from '../components/MonthSwitcher'
 import { Sheet } from '../components/Sheet'
@@ -14,15 +16,18 @@ import { CheckIcon, Dot, WarnIcon } from '../components/Icons'
 interface Props {
   month: string
   onMonth: (m: string) => void
+  goTo: (tab: Tab) => void
 }
 
-export function Budget({ month, onMonth }: Props) {
+export function Budget({ month, onMonth, goTo }: Props) {
   const { data, dispatch } = useApp()
   const [editing, setEditing] = useState<Category | null>(null)
   const [amount, setAmount] = useState('')
 
   const rows = budgetRows(data, month)
   const total = totalBudget(rows)
+  const plan = budgetPlan(data, month)
+  const totals = monthTotals(data, month)
   const savings = savingRows(data, month)
   const goals = savings.filter((s): s is SavingRow & { goalOre: number } => s.goalOre !== null)
   const noGoal = savings.filter((s) => s.goalOre === null)
@@ -57,18 +62,38 @@ export function Budget({ month, onMonth }: Props) {
       </header>
       <MonthSwitcher month={month} onChange={onMonth} />
 
+      {plan.incomeOre > 0 && (
+        <section className="card budget-card">
+          <BudgetPlanCard plan={plan} spentOre={totals.expenseOre} savedOre={totals.savingOre} />
+        </section>
+      )}
+
       {rows.length === 0 && goals.length === 0 && (
         <section className="card welcome">
           <h2>Sätt din första budget</h2>
           <p>
             Välj ett månadstak per utgiftskategori så ser du hela tiden hur mycket som är kvar
-            att spendera – och sätt ett sparmål för att följa månadens sparande.
+            att spendera – och sätt ett sparmål för att följa månadens sparande. Med lönen
+            inlagd under Fasta poster mäts hela planen mot månadens fasta inkomster.
           </p>
         </section>
       )}
-      {rows.length > 0 && (
+      {plan.incomeOre === 0 && rows.length > 0 && (
         <section className="card budget-card">
           <BudgetSummary capOre={total.capOre} spentOre={total.spentOre} />
+        </section>
+      )}
+      {plan.incomeOre === 0 && (rows.length > 0 || goals.length > 0) && (
+        <section className="card welcome">
+          <h2>Mät budgeten mot din inkomst</h2>
+          <p>
+            Lägg in lön och andra fasta inkomster under Fasta poster, så visar budgeten hur
+            stor del av inkomsten som är uppbokad av fasta utgifter, budgetar och sparmål –
+            och hur mycket som är kvar att fördela.
+          </p>
+          <button type="button" className="btn primary" onClick={() => goTo('fixed')}>
+            Gå till Fasta poster
+          </button>
         </section>
       )}
 

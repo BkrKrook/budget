@@ -6,8 +6,9 @@ interface Props {
   spentOre: number
 }
 
-/** Innehållet i "Kvar att spendera"-kortet – delas av Översikt och Budget,
- *  som står för varsin wrapper (.card.budget-card). Renderas bara när
+/** Innehållet i "Kvar att spendera"-kortet – används av Översikt, och av
+ *  Budget som reserv när fasta inkomster saknas (annars BudgetPlanCard).
+ *  Wrappern (.card.budget-card) står anroparen för. Renderas bara när
  *  capOre > 0 (budgetar lagrar enbart positiva tak). */
 export function BudgetSummary({ capOre, spentOre }: Props) {
   const leftOre = capOre - spentOre
