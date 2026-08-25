@@ -1,4 +1,5 @@
-const pad = (n: number) => String(n).padStart(2, '0')
+/** Två siffror med inledande nolla – delas av datumbyggarna i Excel-läsarna. */
+export const pad = (n: number) => String(n).padStart(2, '0')
 
 /** Lokal tid – aldrig toISOString(), som ger UTC och fel datum kvällstid. */
 function toISO(d: Date): string {
@@ -54,6 +55,14 @@ export function monthLabel(monthKey: string): string {
 export function shortMonthLabel(monthKey: string): string {
   const [y, m] = monthKey.split('-').map(Number)
   return monthShortFmt.format(new Date(y, m - 1, 1)).replace('.', '')
+}
+
+const longDayFmt = new Intl.DateTimeFormat('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' })
+
+/** '12 aug 2026' – för listor som spänner över flera år (kontoutdragsimporten). */
+export function longDayLabel(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return longDayFmt.format(new Date(y, m - 1, d)).replace(/\./g, '')
 }
 
 export function dayLabel(iso: string): string {
