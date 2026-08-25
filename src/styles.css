@@ -871,10 +871,6 @@ select {
   gap: 12px;
 }
 
-.import-list {
-  max-height: none;
-}
-
 /* Tre knappar på en rad utan radbrytning på smala skärmar. */
 .import-actions .btn {
   padding: 9px 4px;
@@ -882,8 +878,9 @@ select {
   white-space: nowrap;
 }
 
-.import-row {
-  display: flex;
+/* Kandidatraderna bygger på den vanliga listradens klasser (.row, .row-main,
+   .row-title) med en modifierare för kryssrutan och den andra raden. */
+.row.import-row {
   align-items: flex-start;
   gap: 10px;
   padding: 10px 12px;
@@ -897,15 +894,11 @@ select {
   accent-color: var(--accent);
 }
 
-.import-row.off .import-main {
+.import-row.off .row-main {
   opacity: 0.45;
 }
 
-.import-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
+.import-row .row-main {
   gap: 6px;
 }
 
@@ -915,14 +908,8 @@ select {
   gap: 10px;
 }
 
-.import-text {
+.import-top .row-title {
   flex: 1;
-  min-width: 0;
-  font-size: 14px;
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .import-bottom {

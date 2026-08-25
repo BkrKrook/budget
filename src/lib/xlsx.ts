@@ -4,7 +4,8 @@
  *  – Excel-XML är maskingenererad och regelbunden, så en full XML-parser behövs
  *  inte. Datumformaterade celler normaliseras till 'YYYY-MM-DD'. */
 
-export type Cell = string | number | null
+import type { Cell } from './excel'
+import { BUILTIN_DATE_FMT, isDateCode, serialToISO } from './excel'
 
 const td = new TextDecoder()
 
@@ -58,9 +59,16 @@ const fileText = (files: Map<string, Uint8Array>, name: string): string | undefi
   return f ? td.decode(f) : undefined
 }
 
-/** Attributvärde ur en tagg eller attributsträng; xlsx citerar alltid med ". */
+/** Attributvärde ur en tagg eller attributsträng; xlsx citerar alltid med ".
+ *  Regexparna cachas per attributnamn – attr anropas per cell i arkloopen. */
+const attrRegexps = new Map<string, RegExp>()
 function attr(s: string, name: string): string | undefined {
-  return s.match(new RegExp(`(?:^|\\s)${name}="([^"]*)"`))?.[1]
+  let rx = attrRegexps.get(name)
+  if (!rx) {
+    rx = new RegExp(`(?:^|\\s)${name}="([^"]*)"`)
+    attrRegexps.set(name, rx)
+  }
+  return s.match(rx)?.[1]
 }
 
 function decodeXml(s: string): string {
@@ -88,15 +96,6 @@ function parseSharedStrings(xml: string): string[] {
   return out
 }
 
-/** Excels inbyggda datum-/tidsformat (numFmtId). Delas med .xls-läsaren. */
-export const BUILTIN_DATE_FMT = new Set([14, 15, 16, 17, 18, 19, 20, 21, 22, 45, 46, 47])
-
-/** En egen formatkod är ett datumformat om den innehåller dag/månad/år/tid-
- *  tecken när citerade avsnitt, [villkor] och \-escapade tecken räknats bort. */
-export function isDateCode(code: string): boolean {
-  return /[dmyhs]/i.test(code.replace(/"[^"]*"|\[[^\]]*\]|\\./g, ''))
-}
-
 /** Vilka cellstilar (index i cellXfs) som visar datum. */
 function parseDateStyles(xml: string | undefined): Set<number> {
   const dateStyles = new Set<number>()
@@ -117,15 +116,6 @@ function parseDateStyles(xml: string | undefined): Set<number> {
     index++
   }
   return dateStyles
-}
-
-/** Excelserie → 'YYYY-MM-DD'. UTC-aritmetik så att sommartid inte förskjuter
- *  dygnet; tidsdelen (bråkdelen) ignoreras. Delas med .xls-läsaren. */
-export function serialToISO(serial: number, epoch1904: boolean): string {
-  const base = epoch1904 ? Date.UTC(1904, 0, 1) : Date.UTC(1899, 11, 30)
-  const d = new Date(base + Math.floor(serial) * 86400000)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`
 }
 
 /** Sökväg till första kalkylbladet, via workbookens relationsfil. */

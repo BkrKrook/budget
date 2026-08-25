@@ -4,8 +4,8 @@
  *  (CFB-container) med en "Workbook"-ström av BIFF-poster, och bara de
  *  posttyper ett kontoutdrag behöver stöds. Läser första kalkylbladet. */
 
-import type { Cell } from './xlsx'
-import { BUILTIN_DATE_FMT, isDateCode, serialToISO } from './xlsx'
+import type { Cell } from './excel'
+import { BUILTIN_DATE_FMT, isDateCode, serialToISO } from './excel'
 
 const invalid = () => new Error('Filen är inte en giltig Excelfil (.xls)')
 
@@ -222,7 +222,6 @@ function rkValue(rk: number): number {
  *  xlsx-läsaren, med datumformaterade tal normaliserade till 'YYYY-MM-DD'. */
 export function parseXls(buf: ArrayBuffer): Cell[][] {
   const stream = workbookStream(buf)
-  const view = new DataView(stream.buffer, stream.byteOffset, stream.byteLength)
 
   // Globals-substream: format, XF-stilar, delade strängar, bladkatalog.
   const formats = new Map<number, string>()
@@ -280,62 +279,46 @@ export function parseXls(buf: ArrayBuffer): Cell[][] {
   let pendingString: { r: number; c: number } | null = null
   for (const rec of records(stream, sheetStart)) {
     const d = rec.data
-    const base = d.byteOffset - stream.byteOffset
+    const dv = new DataView(d.buffer, d.byteOffset, d.byteLength)
     if (rec.opcode === 0x000a) break
     if (rec.opcode === 0x00fd && d.length >= 10) {
       // LABELSST: delad sträng.
-      const isst = view.getUint32(base + 6, true)
-      put(view.getUint16(base, true), view.getUint16(base + 2, true), 0, null, sst[isst] ?? '')
+      const isst = dv.getUint32(6, true)
+      put(dv.getUint16(0, true), dv.getUint16(2, true), 0, null, sst[isst] ?? '')
     } else if (rec.opcode === 0x0203 && d.length >= 14) {
       // NUMBER: IEEE-double.
-      put(
-        view.getUint16(base, true),
-        view.getUint16(base + 2, true),
-        view.getUint16(base + 4, true),
-        view.getFloat64(base + 6, true),
-      )
+      put(dv.getUint16(0, true), dv.getUint16(2, true), dv.getUint16(4, true), dv.getFloat64(6, true))
     } else if (rec.opcode === 0x027e && d.length >= 10) {
       // RK: komprimerat tal.
-      put(
-        view.getUint16(base, true),
-        view.getUint16(base + 2, true),
-        view.getUint16(base + 4, true),
-        rkValue(view.getUint32(base + 6, true)),
-      )
+      put(dv.getUint16(0, true), dv.getUint16(2, true), dv.getUint16(4, true), rkValue(dv.getUint32(6, true)))
     } else if (rec.opcode === 0x00bd && d.length >= 12) {
       // MULRK: flera RK-tal på samma rad.
-      const r = view.getUint16(base, true)
-      const colFirst = view.getUint16(base + 2, true)
+      const r = dv.getUint16(0, true)
+      const colFirst = dv.getUint16(2, true)
       const n = (d.length - 6) / 6
       for (let i = 0; i < n; i++) {
-        const xf = view.getUint16(base + 4 + i * 6, true)
-        put(r, colFirst + i, xf, rkValue(view.getUint32(base + 6 + i * 6, true)))
+        const xf = dv.getUint16(4 + i * 6, true)
+        put(r, colFirst + i, xf, rkValue(dv.getUint32(6 + i * 6, true)))
       }
     } else if (rec.opcode === 0x0006 && d.length >= 14) {
       // FORMULA: cachat resultat; strängresultat kommer i en STRING-post efter.
-      const r = view.getUint16(base, true)
-      const c = view.getUint16(base + 2, true)
-      const xf = view.getUint16(base + 4, true)
+      const r = dv.getUint16(0, true)
+      const c = dv.getUint16(2, true)
+      const xf = dv.getUint16(4, true)
       if (d[12] === 0xff && d[13] === 0xff) {
         if (d[6] === 0) pendingString = { r, c }
-      } else put(r, c, xf, view.getFloat64(base + 6, true))
+      } else put(r, c, xf, dv.getFloat64(6, true))
     } else if (rec.opcode === 0x0207 && pendingString) {
       put(pendingString.r, pendingString.c, 0, null, new SegmentReader([d]).string())
       pendingString = null
     }
   }
-  // Gör matrisen tät: fyll hål med null så att raderna kan itereras enkelt.
-  const result: Cell[][] = []
-  for (const row of rows) {
-    if (!row) {
-      result.push([])
-      continue
-    }
-    const dense: Cell[] = []
-    for (let i = 0; i < row.length; i++) dense.push(row[i] ?? null)
-    result.push(dense)
+  // Gör matrisen tät på plats: fyll hål med null, som i xlsx-läsaren.
+  for (let r = 0; r < rows.length; r++) {
+    const row = (rows[r] ??= [])
+    for (let i = 0; i < row.length; i++) row[i] ??= null
   }
-  return result
+  return rows
 }
 
 function readSst(segs: Uint8Array[], count: number): string[] {

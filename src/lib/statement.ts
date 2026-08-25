@@ -4,8 +4,11 @@
  *  granskas i importvyn innan något sparas, så heuristiken behöver vara god
  *  men inte perfekt. */
 
+import type { Transaction } from '../types'
+import { pad } from './dates'
+import type { Cell } from './excel'
+import { serialToISO } from './excel'
 import { parseXls } from './xls'
-import type { Cell } from './xlsx'
 import { parseXlsx } from './xlsx'
 
 export interface StatementRow {
@@ -57,7 +60,7 @@ function sniffDelimiter(text: string): string {
   return ['\t', ';', ','].reduce((a, b) => (counts[b] > counts[a] ? b : a))
 }
 
-export function parseCsv(text: string): Cell[][] {
+function parseCsv(text: string): Cell[][] {
   const delimiter = sniffDelimiter(text)
   const rows: Cell[][] = []
   let row: Cell[] = []
@@ -103,8 +106,6 @@ function parseHtmlTable(html: string): Cell[][] {
   return best
 }
 
-const pad = (n: number) => String(n).padStart(2, '0')
-
 function makeISO(y: number, m: number, d: number): string | null {
   if (y < 1990 || y > 2100 || m < 1 || m > 12 || d < 1 || d > 31) return null
   return `${y}-${pad(m)}-${pad(d)}`
@@ -113,12 +114,11 @@ function makeISO(y: number, m: number, d: number): string | null {
 /** Datumformat som förekommer i bankfiler → ISO. Excelserier hanteras bara
  *  när kolumnen pekats ut av en rubrik (allowSerial) – annars skulle heltals-
  *  belopp kunna misstas för datum. */
-export function parseStatementDate(cell: Cell, allowSerial = false): string | null {
+function parseStatementDate(cell: Cell, allowSerial = false): string | null {
   if (typeof cell === 'number') {
-    if (!allowSerial || !Number.isInteger(cell) || cell < 32874 || cell > 73415) return null
     // 32874 = 1990-01-01, 73415 = 2100-12-31 i Excels 1900-system.
-    const d = new Date(Date.UTC(1899, 11, 30) + cell * 86400000)
-    return makeISO(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate())
+    if (!allowSerial || !Number.isInteger(cell) || cell < 32874 || cell > 73415) return null
+    return serialToISO(cell, false)
   }
   if (typeof cell !== 'string') return null
   const s = cell.trim()
@@ -136,7 +136,7 @@ export function parseStatementDate(cell: Cell, allowSerial = false): string | nu
 /** Belopp med svensk eller engelsk formatering → signerade öre.
  *  Hanterar '−1 234,56', '-1.234,56', '1,234.56', efterställt minus och
  *  parenteser för negativa tal. */
-export function parseStatementAmount(cell: Cell): number | null {
+function parseStatementAmount(cell: Cell): number | null {
   if (typeof cell === 'number') return Math.round(cell * 100)
   if (typeof cell !== 'string') return null
   // \s täcker även hårda/smala mellanslag som banker använder som tusentalsavgränsare.
@@ -162,11 +162,13 @@ export function parseStatementAmount(cell: Cell): number | null {
     // Båda tecknen: det sista är decimaltecken, det andra tusentalsavgränsare.
     s = lastComma > lastDot ? s.split('.').join('').replace(',', '.') : s.split(',').join('')
   } else if (lastComma >= 0 || lastDot >= 0) {
-    const sep = lastComma >= 0 ? ',' : '.'
-    const esc = sep === '.' ? '\\.' : sep
-    if (new RegExp(`${esc}\\d{1,2}$`).test(s) && s.indexOf(sep) === s.lastIndexOf(sep))
-      s = s.replace(sep, '.')
-    else if (new RegExp(`^\\d{1,3}(${esc}\\d{3})+$`).test(s)) s = s.split(sep).join('')
+    // Ensamt skiljetecken: 1–2 siffror efter = decimaltecken, jämna
+    // tretal = tusentalsavgränsare, annat = inget belopp.
+    const idx = Math.max(lastComma, lastDot)
+    const sep = s[idx]
+    const tail = s.slice(idx + 1)
+    if (/^\d{1,2}$/.test(tail) && s.indexOf(sep) === idx) s = `${s.slice(0, idx)}.${tail}`
+    else if ((sep === ',' ? /^\d{1,3}(,\d{3})+$/ : /^\d{1,3}(\.\d{3})+$/).test(s)) s = s.split(sep).join('')
     else return null
   }
   if (!/^\d+(\.\d+)?$/.test(s)) return null
@@ -232,20 +234,18 @@ function columnsFromHeader(matrix: Cell[][]): { cols: Columns; dataStart: number
       }
     }
     if (date < 0) continue
-    if (amount < 0 && amountIn >= 0 && amountOut >= 0 && amountIn !== amountOut) {
-      return {
-        cols: { date, amount: amountIn, amountOut, text: text >= 0 ? text : null, headerBased: true },
-        dataStart: r + 1,
-      }
+    // Utan egen beloppskolumn: skilda in-/utkolumner används som par, medan en
+    // kombinerad kolumn ("Insättning/Uttag") matchar både in och ut och är
+    // beloppskolumnen själv, med tecknet i värdet.
+    let out: number | null = null
+    if (amount < 0 && amountIn >= 0 && amountOut >= 0) {
+      if (amountIn !== amountOut) out = amountOut
+      amount = amountIn
     }
-    // En kombinerad kolumn ("Insättning/Uttag") matchar både in och ut –
-    // det är beloppskolumnen, med tecknet i värdet.
-    if (amount < 0 && amountIn >= 0 && amountIn === amountOut) amount = amountIn
-    if (amount >= 0) {
-      return {
-        cols: { date, amount, amountOut: null, text: text >= 0 ? text : null, headerBased: true },
-        dataStart: r + 1,
-      }
+    if (amount < 0) continue
+    return {
+      cols: { date, amount, amountOut: out, text: text >= 0 ? text : null, headerBased: true },
+      dataStart: r + 1,
     }
   }
   return null
@@ -263,12 +263,16 @@ function columnsFromContent(matrix: Cell[][]): Columns | null {
       if (cell === null || cell === undefined || cell === '') continue
       const st = stats[c]
       st.filled++
-      const amount = parseStatementAmount(cell)
+      // Datum prövas först – beloppstolkningen är dyrare och ett datum är
+      // aldrig ett belopp.
       if (parseStatementDate(cell)) st.dates++
-      else if (amount !== null) {
-        st.amounts++
-        if (amount < 0) st.negatives++
-      } else if (typeof cell === 'string') st.texts++
+      else {
+        const amount = parseStatementAmount(cell)
+        if (amount !== null) {
+          st.amounts++
+          if (amount < 0) st.negatives++
+        } else if (typeof cell === 'string') st.texts++
+      }
     }
   }
   let date = -1
@@ -294,8 +298,9 @@ function columnsFromContent(matrix: Cell[][]): Columns | null {
   return { date, amount, amountOut: null, text, headerBased: false }
 }
 
-/** Tolkar en cellmatris till transaktionsrader. */
-export function interpret(matrix: Cell[][]): ParsedStatement {
+/** Tolkar en cellmatris till transaktionsrader, i filens ordning –
+ *  mergeStatements står för sorteringen. */
+function interpret(matrix: Cell[][]): ParsedStatement {
   const cleaned = matrix.map((row) => row.map((c) => (typeof c === 'string' ? c.trim() : c)))
   const fromHeader = columnsFromHeader(cleaned)
   const cols = fromHeader?.cols ?? columnsFromContent(cleaned)
@@ -319,8 +324,10 @@ export function interpret(matrix: Cell[][]): ParsedStatement {
     const textCell = cols.text !== null ? row[cols.text] : null
     rows.push({ date, amountOre: amount, text: typeof textCell === 'string' ? textCell : '' })
   }
-  return { rows: rows.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)), skipped }
+  return { rows, skipped }
 }
+
+const byDate = (a: StatementRow, b: StatementRow) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)
 
 /** Slår ihop rader från flera filer. Utdrag överlappar ofta (t.ex. ett per
  *  månad plus ett för hela året), så identiska rader räknas per fil och
@@ -341,7 +348,26 @@ export function mergeStatements(perFile: StatementRow[][]): StatementRow[] {
       }
     }
   }
-  return [...kept.values()]
-    .flat()
-    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+  return [...kept.values()].flat().sort(byDate)
+}
+
+const signedOre = (t: Transaction) => (t.type === 'income' ? t.amountOre : -t.amountOre)
+
+/** Flagga per rad: finns en befintlig transaktion med samma datum och
+ *  signerade belopp (t.ex. en materialiserad fast post eller något inlagt för
+ *  hand)? Matchningen räknar antal, så två äkta likadana köp inte båda flaggas
+ *  mot en och samma befintliga post. */
+export function matchExisting(rows: StatementRow[], existing: Transaction[]): boolean[] {
+  const counts = new Map<string, number>()
+  for (const t of existing) {
+    const key = `${t.date}|${signedOre(t)}`
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  return rows.map((row) => {
+    const key = `${row.date}|${row.amountOre}`
+    const left = counts.get(key) ?? 0
+    if (left === 0) return false
+    counts.set(key, left - 1)
+    return true
+  })
 }
