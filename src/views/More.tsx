@@ -7,6 +7,7 @@ import { isCategoryUsed } from '../lib/selectors'
 import { uid } from '../lib/id'
 import type { AppData, Category, Theme, TxType } from '../types'
 import { Dot } from '../components/Icons'
+import { ImportStatement } from '../components/ImportStatement'
 import { Segmented } from '../components/Segmented'
 import { Sheet } from '../components/Sheet'
 
@@ -32,6 +33,7 @@ export function More() {
   const { data, dispatch } = useApp()
   // Category = redigera befintlig, TxType = ny kategori av den typen.
   const [catSheet, setCatSheet] = useState<Category | TxType | null>(null)
+  const [importOpen, setImportOpen] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const doExport = () => {
@@ -114,6 +116,13 @@ export function More() {
 
       <h2 className="section-head">Data</h2>
       <div className="card btn-col">
+        <button type="button" className="btn" onClick={() => setImportOpen(true)}>
+          Importera kontoutdrag (Excel/CSV)
+        </button>
+        <p className="hint center">
+          Fyll historiken med transaktioner från bankens kontoutdrag – tidigare månader ger
+          bättre trender och budgetunderlag.
+        </p>
         <button type="button" className="btn" onClick={doExport}>
           Exportera säkerhetskopia (JSON)
         </button>
@@ -152,6 +161,7 @@ export function More() {
         </p>
       </div>
 
+      {importOpen && <ImportStatement onClose={() => setImportOpen(false)} />}
       {catSheet && <CategoryForm init={catSheet} onClose={() => setCatSheet(null)} />}
     </div>
   )

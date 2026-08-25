@@ -9,6 +9,7 @@ import { storage, THEME_KEY } from './storage'
 
 type Action =
   | { type: 'tx/add'; tx: Transaction }
+  | { type: 'tx/addMany'; txs: Transaction[] }
   | { type: 'tx/update'; tx: Transaction }
   | { type: 'tx/delete'; id: string }
   | { type: 'cat/add'; category: Category }
@@ -63,6 +64,9 @@ function reducer(data: AppData, action: Action): AppData {
   switch (action.type) {
     case 'tx/add':
       return { ...data, transactions: [...data.transactions, action.tx] }
+
+    case 'tx/addMany':
+      return { ...data, transactions: [...data.transactions, ...action.txs] }
 
     case 'tx/update': {
       const prev = data.transactions.find((t) => t.id === action.tx.id)

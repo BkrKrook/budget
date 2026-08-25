@@ -24,6 +24,9 @@ fylls i automatiskt varje månad, samt grafer och trender.
 - **Ljust/mörkt tema** – följer systemet eller väljs manuellt.
 - **Fungerar offline** – en service worker cachar appen, så att den öppnas även
   utan nätverk (datan finns ju redan lokalt).
+- **Importera kontoutdrag** – läs in bankens Excel-/CSV-exporter och fyll
+  historiken med tidigare månader. Kolumnerna hittas automatiskt, kategorier
+  gissas utifrån transaktionstexten och allt granskas innan det sparas.
 - **Export/import** – hela datan som JSON-fil, för säkerhetskopiering och för att
   flytta datan mellan enheter.
 
@@ -39,6 +42,27 @@ Ingenting skickas till någon server och inget konto behövs. Det betyder också
 Lagringen är byggd som en utbytbar adapter (`src/data/storage.ts`), så en framtida
 molnlagring med inloggning och automatisk synk (t.ex. Supabase) kan kopplas in utan
 att resten av appen skrivs om.
+
+## Importera kontoutdrag från banken
+
+Fyll historiken bakåt i tiden – fler månader ger bättre trender och bättre
+underlag för budgeten:
+
+1. Logga in i internetbanken och exportera kontoutdrag som **Excel eller CSV**
+   – ett utdrag per månad eller ett långt, båda fungerar. Både moderna `.xlsx`
+   och bankernas äldre `.xls`-filer stöds.
+2. Öppna appen och gå till **Mer → Data → Importera kontoutdrag**.
+3. Välj filerna – gärna flera på en gång. Appen hittar själv kolumnerna för
+   datum, belopp och text, även när bankerna döpt dem olika.
+4. Granska listan: kategorier är förgissade utifrån texten (ICA → Mat,
+   SL → Transport osv.) och går att ändra per rad. Rader med samma datum och
+   belopp som något som redan finns i appen – till exempel en fast post –
+   är avmarkerade och märkta *Finns redan?*.
+5. Tryck **Importera**. Transaktionerna hamnar i historiken som vanligt och
+   syns direkt i översikt, trender och budget.
+
+Överlappande utdrag är ofarliga: samma rad i två filer räknas bara en gång,
+och en ny import av samma fil flaggar raderna som redan importerade.
 
 ## Kom igång på GitHub Pages
 
@@ -70,6 +94,10 @@ Byggt med Vite, React och TypeScript. Inga övriga beroenden.
 ## Tekniska anteckningar
 
 - Belopp lagras i **öre** (heltal) för att undvika flyttalsfel.
+- Kontoutdragsimporten läser `.xlsx` (`src/lib/xlsx.ts`, zip-uppackning via
+  webbläsarens `DecompressionStream`) och gamla binära `.xls` (`src/lib/xls.ts`,
+  CFB-container + BIFF8) med egna minimala, beroendefria läsare, och tål CSV i
+  olika teckenkodningar och beloppsformat (`src/lib/statement.ts`).
 - Fasta poster materialiseras till transaktioner per månad; raderas en enskild
   månads transaktion antecknas det (tombstone) så att den inte återskapas.
 - Diagrammen följer en färgpalett som är validerad för färgblindhet i både ljust

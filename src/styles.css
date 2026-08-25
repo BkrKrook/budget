@@ -863,6 +863,111 @@ select {
   gap: 8px;
 }
 
+/* ---------- Kontoutdragsimport ---------- */
+
+.import-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.import-list {
+  max-height: none;
+}
+
+/* Tre knappar på en rad utan radbrytning på smala skärmar. */
+.import-actions .btn {
+  padding: 9px 4px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.import-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.import-row input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  flex: none;
+  accent-color: var(--accent);
+}
+
+.import-row.off .import-main {
+  opacity: 0.45;
+}
+
+.import-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.import-top {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.import-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import-bottom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.import-date {
+  font-size: 12.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.import-tag {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--critical);
+  background: color-mix(in srgb, var(--critical) 12%, transparent);
+  border-radius: 6px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
+select.import-cat {
+  margin-left: auto;
+  width: auto;
+  max-width: 55%;
+  font-size: 13px;
+  padding: 5px 8px;
+  border-radius: 9px;
+}
+
+/* Summering och importknapp ligger kvar i botten medan listan rullas. */
+.import-foot {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--surface);
+  padding: 10px 0 4px;
+  border-top: 1px solid var(--grid);
+}
+
 /* ---------- Välkomst & tomtillstånd ---------- */
 
 .welcome h2 {
